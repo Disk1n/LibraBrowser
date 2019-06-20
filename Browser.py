@@ -12,6 +12,7 @@ import sys
 import sqlite3
 from multiprocessing import Process
 from datetime import datetime
+import traceback
 
 
 ##############
@@ -45,7 +46,9 @@ version_template = open('version.html.tmpl', 'r').read()
 
 version_error_template = header + "<h1>Couldn't read version details!<h1></body></html>"
 
-account_template = header + '''<h2><b>Details about account: {0} </b></h2>
+account_template = open('account.html.tmpl', 'r').read()
+
+old_account_template = header + '''<h2><b>Details about account: {0} </b></h2>
                                <h2> {1} </h2>
                                <h2> {2} </h2>
                                <h2> Last tx details:</h2> {3} 
@@ -181,7 +184,7 @@ def tx_db_worker():
 
                 if bver > cur_ver + 100:
                     # batch update
-                    raw_tx = do_cmd("q tr " + str(cur_ver) + " 100 false", bufsize=300000, p=p2, delay=1)
+                    raw_tx = do_cmd("q tr " + str(cur_ver) + " 100 false", bufsize=300000, p=p2, delay=2)
 
                     end = raw_tx.index('\nTransaction')
                     start = end + 1
@@ -206,8 +209,8 @@ def tx_db_worker():
 
                 else:
                     # singular update
-                    raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p = p2)
-                    tx_str = parse_raw_tx(raw_tx)
+                    raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p=p2)
+                    tx_str, ver = parse_raw_tx(raw_tx)
                     c.execute("INSERT INTO transactions VALUES " + tx_str)
 
                 # Save (commit) the changes
@@ -221,7 +224,9 @@ def tx_db_worker():
                     print('db updated to version:', cur_ver - 1)
 
         except:
+            p2.communicate("q!")
             print('Major error in tx_db_worker, details:', sys.exc_info())
+            traceback.print_exception(*sys.exc_info())
             print('restarting tx_db_worker')
 
 
@@ -232,8 +237,8 @@ def get_version_from_raw(s):
 def get_tx_from_db_by_version(ver, c):
     try:
         ver = int(ver)   # safety
-        print('potential attempt to inject')
     except:
+        print('potential attempt to inject')
         ver = 1
 
     c.execute("SELECT * FROM transactions WHERE version = " + str(ver))
@@ -243,6 +248,40 @@ def get_tx_from_db_by_version(ver, c):
         print('possible duplicates detected in db, record version:', ver)
 
     return res[0]
+
+
+def get_acct_info(raw_account_status):
+    try:
+        account = next(re.finditer(r'Account: ([a-z0-9]+)', raw_account_status)).group(1)
+        balance = str(int(next(re.finditer(r'balance: (\d+),', raw_account_status)).group(1)) / 1000000)
+        sq_num = next(re.finditer(r'sequence_number: (\d+),', raw_account_status)).group(1)
+        sent_events = next(re.finditer(r'sent_events_count: (\d+),', raw_account_status)).group(1)
+        recv_events = next(re.finditer(r'received_events_count: (\d+),', raw_account_status)).group(1)
+    except:
+        print(sys.exc_info())
+
+    return account, balance, sq_num, sent_events, recv_events
+
+
+def gen_tx_table_row(tx):
+    res  = '<tr><td>'
+    res += '<a href="/version/' + str(tx[0]) + '">' + str(tx[0]) + '</a></td><td>'  # Version
+    res += str(tx[1]) + '</td><td>'                                                 # expiration date
+    res += '<a href="/account/' + str(tx[2]) + '">' + str(tx[2]) + '</a> &rarr; '   # source
+    res += '<a href="/account/' + str(tx[3]) + '">' + str(tx[3]) + '</a></td><td>'  # dest
+    res += '<strong>' + str(tx[5]) + ' Libra</strong></td>'                         # amount
+    res += '</tr>'
+
+    return res
+
+
+def get_all_account_tx(c, acct, page):
+    offset = str(page * 100)
+    c.execute("SELECT * FROM transactions WHERE (src = '"+acct+"') OR (dest = '"+acct+"')" +
+              "ORDER BY version DESC LIMIT " + offset + ",100")
+    res = c.fetchall()
+
+    return res
 
 
 ##########
@@ -282,24 +321,33 @@ def version(ver):
 def acct_details(acct):
     print(acct)
     update_counters()
+    try:
+        page = int(request.args.get('page'))
+    except:
+        page = 0
 
     if not is_valid_account(acct):
         return invalid_account_template
 
-    balance = do_cmd("q b "+acct, p = p)
+    c2, conn = connect_to_db(DB_PATH)
+    bver = str(get_latest_version(c2))
 
-    s = do_cmd("q s "+acct, delay=1, p = p)
-    print('sq num raw=', s)
-    sys.stdout.flush()
-    sq_num = s[len('>> Getting current sequence number '):]
+    s = do_cmd("q as " + acct, p = p)
+    acct_info = get_acct_info(s)
 
-    last_tx_sq = int(sq_num[len('Sequence number is: '):]) - 1
-    last_tx_sq = max(0, last_tx_sq)
+    try:
+        tx_list = get_all_account_tx(c2, acct, page)
+        tx_tbl = ''
+        for tx in tx_list:
+            tx_tbl += gen_tx_table_row(tx)
+    except:
+        print(sys.exc_info())
+        print('error in building table')
 
-    s = do_cmd("q ts "+acct+" "+str(last_tx_sq)+" true", delay=1, bufsize=10000, p = p)
-    tx_details = s[len('>> Getting committed transaction by account and sequence number '):]
+    next_page = "/account/" + acct + "?page=" + str(page + 1)
 
-    return account_template.format(acct, balance, sq_num, add_addr_links(tx_details))
+    conn.close()
+    return account_template.format(bver, *acct_info, tx_tbl, next_page)
 
 
 @app.route('/search')
