@@ -149,80 +149,86 @@ def get_latest_version(c):
 
 
 def tx_db_worker():
-    print('transactions db worker starting')
-    p2 = start_client_instance()
-    print('client instance for tx_db started')
-
-    # connect to DB
-    c, conn = connect_to_db(DB_PATH)  # returns cursor object
-
-    # Create table if doesn't exist
-    try:
-        c.execute('''CREATE TABLE transactions
-                     (version INTEGER, expiration_date text, src text, dest text, type text, amount real, 
-                      gas_price real, max_gas real, sq_num INTEGER, pub_key text)''')
-    except:
-        print(sys.exc_info())
-        print('reusing existing db')
-
-    # get latest version in the db
-    cur_ver = get_latest_version(c)
-    cur_ver += 1  # TODO: later handle genesis
-    print('starting update at version', cur_ver)
-
-    # start the main loop
     while True:
         try:
-            s = do_cmd("q as 0", p = p2, delay = 0.3)
-            bver = get_version_from_raw(s)
-            bver = int(bver)
-        except:
-            sleep(1)
-            continue
-        if cur_ver > bver:
-            sleep(1)
-            continue
+            print('transactions db worker starting')
+            p2 = start_client_instance()
+            print('client instance for tx_db started')
 
-        if bver > cur_ver + 100:
-            # batch update
-            raw_tx = do_cmd("q tr " + str(cur_ver) + " 100 false", bufsize=300000, p=p2, delay=1)
+            # connect to DB
+            c, conn = connect_to_db(DB_PATH)  # returns cursor object
 
-            end = raw_tx.index('\nTransaction')
-            start = end + 1
+            # Create table if doesn't exist
+            try:
+                c.execute('''CREATE TABLE transactions
+                             (version INTEGER, expiration_date text, src text, dest text, type text, amount real, 
+                              gas_price real, max_gas real, sq_num INTEGER, pub_key text)''')
+            except:
+                print(sys.exc_info())
+                print('reusing existing db')
 
-            for x in range(100):
+            # get latest version in the db
+            cur_ver = get_latest_version(c)
+            cur_ver += 1  # TODO: later handle genesis
+            print('starting update at version', cur_ver)
+
+            # start the main loop
+            while True:
                 try:
-                    end = raw_tx.index('\nTransaction', start)
-                    #print(1234, start, end)
-                    next_str = raw_tx[start:end]
+                    s = do_cmd("q as 0", p = p2, delay = 0.3)
+                    bver = get_version_from_raw(s)
+                    bver = int(bver)
                 except:
-                    break  # instead of handling the edge case and taking parsing risk just stop
-                #print(1234, next_str)
-                tx_str, ver = parse_raw_tx(next_str)
-                c.execute("INSERT INTO transactions VALUES " + tx_str)
+                    sleep(1)
+                    continue
+                if cur_ver > bver:
+                    sleep(1)
+                    continue
 
-                start = end + 1
+                if bver > cur_ver + 100:
+                    # batch update
+                    raw_tx = do_cmd("q tr " + str(cur_ver) + " 100 false", bufsize=300000, p=p2, delay=1)
 
-            # update counter to the latest version we inserted
-            cur_ver = ver
+                    end = raw_tx.index('\nTransaction')
+                    start = end + 1
 
-            print('batch update to version:', cur_ver, 'success')
+                    for x in range(100):
+                        try:
+                            end = raw_tx.index('\nTransaction', start)
+                            #print(1234, start, end)
+                            next_str = raw_tx[start:end]
+                        except:
+                            break  # instead of handling the edge case and taking parsing risk just stop
+                        #print(1234, next_str)
+                        tx_str, ver = parse_raw_tx(next_str)
+                        c.execute("INSERT INTO transactions VALUES " + tx_str)
 
-        else:
-            # singular update
-            raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p = p2)
-            tx_str = parse_raw_tx(raw_tx)
-            c.execute("INSERT INTO transactions VALUES " + tx_str)
+                        start = end + 1
 
-        # Save (commit) the changes
-        conn.commit()
+                    # update counter to the latest version we inserted
+                    cur_ver = ver
 
-        # update latest version to next
-        cur_ver += 1
+                    print('batch update to version:', cur_ver, 'success')
 
-        # nice print
-        if (cur_ver - 1) % 10 == 0:
-            print('db updated to version:', cur_ver - 1)
+                else:
+                    # singular update
+                    raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p = p2)
+                    tx_str = parse_raw_tx(raw_tx)
+                    c.execute("INSERT INTO transactions VALUES " + tx_str)
+
+                # Save (commit) the changes
+                conn.commit()
+
+                # update latest version to next
+                cur_ver += 1
+
+                # nice print
+                if (cur_ver - 1) % 10 == 0:
+                    print('db updated to version:', cur_ver - 1)
+
+        except:
+            print('Major error in tx_db_worker, details:', sys.exc_info())
+            print('restarting tx_db_worker')
 
 
 def get_version_from_raw(s):
