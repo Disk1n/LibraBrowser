@@ -41,7 +41,9 @@ header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
 
 index_template = open('index.html.tmpl', 'r').read()
 
-version_template = header + '''<h1>Libra Testnet Version: {0}</h1> (this is somewhat equivalent to block height)
+version_template = open('version.html.tmpl', 'r').read()
+
+old_version_template = header + '''<h1>Libra Testnet Version: {0}</h1> (this is somewhat equivalent to block height)
               <h2> <a href=/version/{2}>Previous Version</a> <a href=/version/{3}>Next Version</a> </h2>
               <h2>TX details at this version:</h2>{1}<br>
               </body></html>
@@ -229,7 +231,7 @@ def get_version_from_raw(s):
 
 def get_tx_from_db_by_version(ver, c):
     try:
-        ver = int(ver) # safety
+        ver = int(ver)   # safety
         print('potential attempt to inject')
     except:
         ver = 1
@@ -251,13 +253,9 @@ def index():
     update_counters()
     c2, conn = connect_to_db(DB_PATH)
 
-    #s = do_cmd("q as 0", delay=1, p = p)
-    #bver = get_version_from_raw(s)
-    #print(bver)
-    #sys.stdout.flush()
-
     bver = str(get_latest_version(c2))
 
+    conn.close()
     return index_template.format(bver)
 
 
@@ -266,19 +264,13 @@ def version(ver):
     update_counters()
     c2, conn = connect_to_db(DB_PATH)
 
+    bver = str(get_latest_version(c2))
+
     ver = int(ver)
     tx = get_tx_from_db_by_version(ver, c2)
-    print(type(tx), tx)
 
-    s = do_cmd("q txn_range " + str(ver) + " 1 true", delay=1, bufsize=10000, p = p)
-    try:
-        endtrash = next(re.finditer(r'}\s+.+$', s)).group(0)
-        starttrash = next(re.finditer(r'[^:]+:', s)).group(0)
-        tx = add_addr_links(s[len(starttrash):-len(endtrash)])
-    except:
-        return version_error_template
-
-    return version_template.format(str(ver), tx, str(ver - 1), str(ver + 1))
+    conn.close()
+    return version_template.format(bver, *tx)
 
 
 @app.route('/account/<acct>')
