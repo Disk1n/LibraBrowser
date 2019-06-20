@@ -43,12 +43,6 @@ index_template = open('index.html.tmpl', 'r').read()
 
 version_template = open('version.html.tmpl', 'r').read()
 
-old_version_template = header + '''<h1>Libra Testnet Version: {0}</h1> (this is somewhat equivalent to block height)
-              <h2> <a href=/version/{2}>Previous Version</a> <a href=/version/{3}>Next Version</a> </h2>
-              <h2>TX details at this version:</h2>{1}<br>
-              </body></html>
-'''
-
 version_error_template = header + "<h1>Couldn't read version details!<h1></body></html>"
 
 account_template = header + '''<h2><b>Details about account: {0} </b></h2>
@@ -272,8 +266,13 @@ def version(ver):
 
     bver = str(get_latest_version(c2))
 
-    ver = int(ver)
-    tx = get_tx_from_db_by_version(ver, c2)
+    try:
+        ver = int(ver)
+        tx = get_tx_from_db_by_version(ver, c2)
+    except:
+        conn.close()
+        return version_error_template
+
 
     conn.close()
     return version_template.format(bver, *tx)
@@ -303,11 +302,15 @@ def acct_details(acct):
     return account_template.format(acct, balance, sq_num, add_addr_links(tx_details))
 
 
-@app.route('/account')
-def acct_redir():
+@app.route('/search')
+def search_redir():
     tgt = request.args.get('acct')
-    print('redir to', tgt)
-    return redirect('/account/'+tgt)
+    if len(tgt) == 64:
+        print('redir to account', tgt)
+        return redirect('/account/'+tgt)
+    else:
+        print('redir to tx', tgt)
+        return redirect('/version/'+tgt)
 
 
 @app.route('/assets/<path:path>')
