@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Experimental Libra Testnet Explorer</title>
+	<meta name="description" content="Experimental Libra testnet explorer by @gal_diskin and Daniel Prinz of First Group" />
+	<meta name="keywords" content="Libra, libracoin, libra coin, facebook coin, calibra" />
+	<meta name="author" content="Gal Diskin, Daniel Prinz, First Group"/>
+
+	<!-- Favicon -->
+	<link rel="icon" type="image/png" href="assets/images/favicon.png" />
+
+	<!-- Bootstrap & Plugins CSS -->
+	<link href="assets/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+	<link href="assets/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+	<!-- Custom CSS -->
+	<link href="assets/css/purple.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+
+	<div class="loading-wrapper">
+		<div class="loading">
+			<div></div>
+			<div></div>
+			<div></div>
+		</div>
+	</div>	
+
+	<!-- ***** Header Area Start ***** -->
+	<header class="header-area">
+		<div class="container">
+			<div class="row">
+				<div class="col-12">
+					<nav class="main-nav">
+						<!-- ***** Logo Start ***** -->
+						<a href="index.html" class="logo">
+							<img src="assets/images/logos/transparent-logo.png" style="max-height: 40px;" class="light-logo" alt="Libra Testnet Block Explorer"/>
+							<img src="assets/images/logos/white-logo.png" style="max-height: 40px;" class="dark-logo" alt="Libra Testnet Block Explorer"/>
+						</a>
+						<!-- ***** Logo End ***** -->
+
+						<!-- ***** Menu Start ***** -->
+						<ul class="nav">
+							<li><a href="index.html">HOME</a></li>
+							<li><a href="block-explorer-latest-blocks.html">LATEST BLOCKS</a></li>
+						</ul>
+						<a class='menu-trigger'>
+							<span>Menu</span>
+						</a>
+						<!-- ***** Menu End ***** -->						
+					</nav>
+				</div>
+			</div>
+		</div>
+	</header>
+	<!-- ***** Header Area End ***** -->
+
+	<!-- ***** Welcome Area Start ***** -->
+	<section class="block-explorer-wrapper bg-bottom-center" id="welcome-1">
+		<div class="block-explorer text">
+			<div class="container text-center">
+				<div class="row">
+					<div class="col-lg-12 align-self-center">
+						<h1>Libra Testnet Explorer</h1>
+					</div>
+					<div class="offset-lg-3 col-lg-6">
+						<p>Testnet Version / Up To Block 1883224<br>(this is somewhat equivalent to block height)</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="search">
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						<div class="input-wrapper">
+							<div class="input">
+								<input type="text" placeholder="Account details">
+								<button><i class="fa fa-search"></i></button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>	
+	</section>
+	<!-- ***** Welcome Area End ***** -->
+
+	<section class="block-explorer-section section bg-bottom">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="center-heading">
+						<h2 class="section-title">Details for Account</h2>
+					</div>
+				</div>
+				<div class="offset-lg-3 col-lg-6">
+					<div class="center-text">
+						<p>What else should we put here?</p>
+					</div>
+				</div>
+			</div>			
+			<div class="row m-bottom-70">
+				<div class="col-lg-9 col-md-9 col-sm-12">
+					<div class="table-responsive">
+						<table class="table table-striped table-latests table-detail">
+							<tbody>
+								<tr>
+									<td><strong>Address</strong></td>
+									<td>EcGbgDMaxhEhe9spbGjhqAPuWDTcfUopQY</td>
+								</tr>
+								<tr>
+									<td><strong>Balance</strong></td>
+									<td>XXXX</td>
+								</tr>
+								<tr>
+									<td><strong>Sequence Number</strong></td>
+									<td>64</td>
+								</tr>
+								<tr>
+									<td><strong>Last Tx Details</strong></td>
+									<td>Transaction not available</td>
+								</tr>
+								<tr>
+									<td><strong>Total Received</strong></td>
+									<td>$3,209.53</td>
+								</tr>
+								<tr>
+									<td><strong>Final Balance</strong></td>
+									<td>$2,357.27</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+			</div>
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="center-heading">
+						<h2 class="section-title">Transactions</h2>
+					</div>
+				</div>
+				<div class="offset-lg-3 col-lg-6">
+					<div class="center-text">
+						<p>Latest transactions</p>
+					</div>
+				</div>
+			</div>			
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="table-responsive">
+						<table class="table table-striped table-latests">
+							<thead>
+								<tr>
+									<th>Hash</th>
+									<th>Block</th>
+									<th>Date/Time</th>
+									<th>Amount</th>
+									<th>Balance</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>d3e4f72db22777a3</td>
+									<td>1863796</td>
+									<td>2018-04-13 10:14:27</td>
+									<td><span class="red">- 99,999<small>.99</small> Libra</span></td>
+									<td>8,355,004<small>.71</small> Libra</td>
+								</tr>
+								<tr>
+									<td>29a7e2f30d424248</td>
+									<td>1862732</td>
+									<td>2018-04-12 14:16:54</td>
+									<td><span class="red">- 99,999<small>.99</small> Libra</span></td>
+									<td>8,455,004<small>.7</small> Libra</td>
+								</tr>
+								<tr>
+									<td>2f04876ba83f63d6</td>
+									<td>1837529</td>
+									<td>2018-03-23 22:12:16</td>
+									<td><span class="green">+ 99,999<small>.99</small> Libra</span></td>
+									<td>8,555,004<small>.69</small> Libra</td>
+								</tr>
+								<tr>
+									<td>24dadeea863c4cb6</td>
+									<td>1837516</td>
+									<td>2018-03-23 21:59:47</td>
+									<td><span class="green">+ 99,999<small>.99</small> Libra</span></td>
+									<td>8,455,004<small>.7</small> Libra</td>
+								</tr>
+								<tr>
+									<td>6c1f51ee1782f1de</td>
+									<td>1801648</td>
+									<td>2018-02-24 23:32:49</td>
+									<td><span class="red">- 70,001<small>.99</small> Libra</span></td>
+									<td>8,355,004<small>.71</small> Libra</td>
+								</tr>
+								<tr>
+									<td>35689f91f9a389fa</td>
+									<td>1766980</td>
+									<td>2018-01-30 03:42:33</td>
+									<td><span class="red">- 299,999<small>.99</small> Libra</span></td>
+									<td>8,425,006<small>.7</small> Libra</td>
+								</tr>
+								<tr>
+									<td>459f7bd610f62f8e</td>
+									<td>1744792</td>
+									<td>2018-01-13 16:52:33</td>
+									<td><span class="red">- 79,999<small>.99</small> Libra</span></td>
+									<td>8,725,006<small>.69</small> Libra</td>
+								</tr>
+								<tr>
+									<td>33d333ed27d8585c</td>
+									<td>1711392</td>
+									<td>2017-12-20 01:23:30</td>
+									<td><span class="red">- 499,999<small>.99</small> Libra</span></td>
+									<td>8,805,006<small>.68</small> Libra</td>
+								</tr>
+								<tr>
+									<td>ef89f28eacd70b95</td>
+									<td>1711220</td>
+									<td>2017-12-19 22:20:29</td>
+									<td><span class="red">- 169,999<small>.99</small> Libra</span></td>
+									<td>9,305,006<small>.67</small> Libra</td>
+								</tr>
+								<tr>
+									<td>3ae2012fac36f081</td>
+									<td>1705263</td>
+									<td>2017-12-15 12:55:55</td>
+									<td><span class="red">- 159,999<small>.99</small> Libra</span></td>
+									<td>9,475,006<small>.66</small> Libra</td>
+								</tr>
+								<tr>
+									<td>ec630c5de5ccbdaf</td>
+									<td>1685058</td>
+									<td>2017-11-30 13:14:24</td>
+									<td><span class="red">- 399,999<small>.99</small> Libra</span></td>
+									<td>9,635,006<small>.65</small> Libra</td>
+								</tr>
+								<tr>
+									<td>a3db0f84e058175c</td>
+									<td>1664298</td>
+									<td>2017-11-15 01:10:22</td>
+									<td><span class="red">- 600,001<small>.99</small> Libra</span></td>
+									<td>10,035,006<small>.64</small> Libra</td>
+								</tr>
+								<tr>
+									<td>2cf97e2c61e7a1a7</td>
+									<td>1644648</td>
+									<td>2017-10-31 00:48:40</td>
+									<td><span class="red">- 99,999<small>.99</small> Libra</span></td>
+									<td>10,635,008<small>.63</small> Libra</td>
+								</tr>
+								<tr>
+									<td>88f82cf57bf61a8d</td>
+									<td>1632389</td>
+									<td>2017-10-21 17:01:49</td>
+									<td><span class="green">+ 79,999<small>.99</small> Libra</span></td>
+									<td>10,735,008<small>.62</small> Libra</td>
+								</tr>
+								<tr>
+									<td>574d2191cc0514ab</td>
+									<td>1632387</td>
+									<td>2017-10-21 17:00:20</td>
+									<td><span class="green">+ 299,999<small>.99</small> Libra</span></td>
+									<td>10,655,008<small>.63</small> Libra</td>
+								</tr>
+								<tr>
+									<td>d737aee6f7bd32bf</td>
+									<td>1630884</td>
+									<td>2017-10-20 14:20:22</td>
+									<td><span class="green">+ 169,999<small>.99</small> Libra</span></td>
+									<td>10,355,008<small>.64</small> Libra</td>
+								</tr>
+								<tr>
+									<td>fc1d953a47e30f5f</td>
+									<td>1628746</td>
+									<td>2017-10-18 23:59:21</td>
+									<td><span class="green">+ 159,999<small>.99</small> Libra</span></td>
+									<td>10,185,008<small>.65</small> Libra</td>
+								</tr>
+								<tr>
+									<td>31086ded676a6e1c</td>
+									<td>1628740</td>
+									<td>2017-10-18 23:57:52</td>
+									<td><span class="green">+ 2,099,999<small>.99</small> Libra</span></td>
+									<td>10,025,008<small>.66</small> Libra</td>
+								</tr>
+								<tr>
+									<td>8dbfc3d0c5a22ea5</td>
+									<td>1626679</td>
+									<td>2017-10-17 10:43:17</td>
+									<td><span class="red">- 700,000<small>.0</small> Libra</span></td>
+									<td>7,925,008<small>.67</small> Libra</td>
+								</tr>
+								<tr>
+									<td>77c39582662734b2</td>
+									<td>1602704</td>
+									<td>2017-09-28 22:07:41</td>
+									<td><span class="green">+ 700,000<small>.0</small> Libra</span></td>
+									<td>8,625,008<small>.67</small> Libra</td>
+								</tr>
+								<tr>
+									<td>0cfe0329984af3a9</td>
+									<td>1602668</td>
+									<td>2017-09-28 21:32:08</td>
+									<td><span class="red">- 10<small>.0</small> Libra</span></td>
+									<td>7,925,008<small>.67</small> Libra</td>
+								</tr>
+								<tr>
+									<td>241e20def07426c6</td>
+									<td>1594640</td>
+									<td>2017-09-22 21:24:25</td>
+									<td><span class="green">+ 10<small>.0</small> Libra</span></td>
+									<td>7,925,018<small>.67</small> Libra</td>
+								</tr>
+								<tr>
+									<td>3cc8be1caadd24f1</td>
+									<td>1593981</td>
+									<td>2017-09-22 09:31:09</td>
+									<td><span class="green">+ 359,999<small>.99</small> Libra</span></td>
+									<td>7,925,008<small>.67</small> Libra</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+
+	<!-- ***** Contact & Footer Start ***** -->
+	<footer id="contact">
+		<div class="footer-bottom slim">
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						<p class="copyright">2019 © <a href="http://firstdag.com" style="color: white;">First - Digital Assets Group</a></p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</footer>
+	<!-- ***** Contact & Footer End ***** -->
+
+
+	<!-- jQuery -->
+	<script src="assets/js/jquery-2.1.0.min.js"></script>
+
+	<!-- Bootstrap -->
+	<script src="assets/js/popper.js"></script>
+	<script src="assets/js/bootstrap.min.js"></script>
+
+	<!-- Plugins -->
+	<script src="assets/js/particles.min.js"></script>
+	<script src="assets/js/scrollreveal.min.js"></script>
+	<script src="assets/js/jquery.downCount.js"></script>
+	<script src="assets/js/parallax.min.js"></script>
+
+	<!-- Global Init -->
+	<script src="assets/js/particle-purple.js"></script>
+	<script src="assets/js/custom.js"></script>
+</body>
+</html>

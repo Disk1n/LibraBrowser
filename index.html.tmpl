@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Experimental Libra Testnet Explorer</title>
+	<meta name="description" content="Experimental Libra testnet explorer by @gal_diskin and Daniel Prinz of First Group" />
+	<meta name="keywords" content="Libra, libracoin, libra coin, facebook coin, calibra" />
+	<meta name="author" content="Gal Diskin, Daniel Prinz, First Group"/>
+
+	<!-- Favicon -->
+	<link rel="icon" type="image/png" href="assets/images/favicon.png" />
+
+	<!-- Bootstrap & Plugins CSS -->
+	<link href="assets/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+	<link href="assets/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+	<!-- Custom CSS -->
+	<link href="assets/css/purple.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+
+	<div class="loading-wrapper">
+		<div class="loading">
+			<div></div>
+			<div></div>
+			<div></div>
+		</div>
+	</div>	
+
+	<!-- ***** Header Area Start ***** -->
+	<header class="header-area">
+		<div class="container">
+			<div class="row">
+				<div class="col-12">
+					<nav class="main-nav">
+						<!-- ***** Logo Start ***** -->
+						<a href="/" class="logo">
+							<img src="assets/images/logos/transparent-logo.png" style="max-height: 40px;" class="light-logo" alt="Libra Testnet Block Explorer"/>
+							<img src="assets/images/logos/white-logo.png" style="max-height: 40px;" class="dark-logo" alt="Libra Testnet Block Explorer"/>
+						</a>
+						<!-- ***** Logo End ***** -->
+
+						<!-- ***** Menu Start ***** -->
+						<ul class="nav">
+							<li><a href="/">HOME</a></li>
+							<li><a href="/version/{0}">LATEST BLOCKS</a></li>
+						</ul>
+						<a class='menu-trigger'>
+							<span>Menu</span>
+						</a>
+						<!-- ***** Menu End ***** -->						
+					</nav>
+				</div>
+			</div>
+		</div>
+	</header>
+	<!-- ***** Header Area End ***** -->
+
+	<!-- ***** Welcome Area Start ***** -->
+	<section class="block-explorer-wrapper bg-bottom-center" id="welcome-1">
+		<div class="block-explorer text">
+			<div class="container text-center">
+				<div class="row">
+					<div class="col-lg-12 align-self-center">
+						<h1>Libra Testnet Explorer</h1>
+					</div>
+					<div class="offset-lg-3 col-lg-6">
+						<p>Testnet Version / Up To Block {0}<br>(please bare with us as we re-design the website a bit)</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="search">
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						<div class="input-wrapper">
+							<div class="input">
+								<form action="/account">
+									<input type="text" placeholder="Account details" name="acct">
+									<button><i class="fa fa-search"></i></button>
+								</form>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>	
+	</section>
+	<!-- ***** Welcome Area End ***** -->
+
+	<section class="block-explorer-features section bg-bottom">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="center-heading">
+						<h2 class="section-title">About Libra</h2>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
+					<div class="item">
+						<div class="title">
+							<div class="icon"></div>
+							<h5>Official Libra Website</h5>
+						</div>
+						<div class="text">
+							<span><a href="https://libra.org">Libra.org</a></span>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
+					<div class="item">
+						<div class="title">
+							<div class="icon"></div>
+							<h5>Developer Website</h5>
+						</div>
+						<div class="text">
+							<span><a href="https://developers.libra.org/">Developers</a></span>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
+					<div class="item">
+						<div class="title">
+							<div class="icon"></div>
+							<h5>Libra's Whitepaper</h5>
+						</div>
+						<div class="text">
+							<span><a href="https://developers.libra.org/docs/the-libra-blockchain-paper.html">Blockchain Paper</a></span>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
+					<div class="item">
+						<div class="title">
+							<div class="icon"></div>
+							<h5>Programming Language</h5>
+						</div>
+						<div class="text">
+							<span><a href="https://developers.libra.org/docs/move-overview.html">"Move"</a></span>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="center-heading">
+						<h2 class="section-title">General Information</h2>
+					</div>
+				</div>
+				<div class="col-lg-12">
+					<div class="center-text">
+						<p>This experimental Libra testnet explorer was created by <a href="https://twitter.com/gal_diskin">@gal_diskin</a> special with thanks to Daniel Prinz of <a href="firstdag.com">First Group</a>.
+							<br>Gal developed this to make testing easier. <b>Gal</b>: "I have no patiance ATM to make it pretty / faster / more stable. I might continue to develop this if I see it has value to others... If you liked this feel free to let me know and send me some tokens on the testnet at: <a href="https://librabrowser.io/account/e945eec0f64069d4f171d394aa27881fabcbd3bb6bcc893162e60ad3d6c9feec">e945eec0f64069d4f171d394aa27881fabcbd3bb6bcc893162e60ad3d6c9feec"</a>.
+							<br>Librabrowser.io / First Group / Gal Diskin are not in any way affiliated with Libra project or its participants. This site was created as a community project only
+						</p>
+					</div>					
+				</div>
+			</div>
+			
+		</div>
+	</section>
+
+
+	<!-- ***** Contact & Footer Start ***** -->
+	<footer id="contact">
+		<div class="footer-bottom slim">
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						<p class="copyright">2019 © <a href="http://firstdag.com" style="color: white;">First - Digital Assets Group</a></p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</footer>
+	<!-- ***** Contact & Footer End ***** -->
+
+
+	<!-- jQuery -->
+	<script src="assets/js/jquery-2.1.0.min.js"></script>
+
+	<!-- Bootstrap -->
+	<script src="assets/js/popper.js"></script>
+	<script src="assets/js/bootstrap.min.js"></script>
+
+	<!-- Plugins -->
+	<script src="assets/js/particles.min.js"></script>
+	<script src="assets/js/scrollreveal.min.js"></script>
+	<script src="assets/js/jquery.downCount.js"></script>
+	<script src="assets/js/parallax.min.js"></script>
+
+	<!-- Global Init -->
+	<script src="assets/js/particle-purple.js"></script>
+	<script src="assets/js/custom.js"></script>
+</body>
+</html>
