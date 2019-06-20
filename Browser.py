@@ -209,7 +209,7 @@ def tx_db_worker():
 
                 else:
                     # singular update
-                    raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p=p2)
+                    raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p=p2, delay=2)
                     tx_str, ver = parse_raw_tx(raw_tx)
                     c.execute("INSERT INTO transactions VALUES " + tx_str)
 
