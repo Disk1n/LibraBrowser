@@ -26,6 +26,7 @@ app = Flask(__name__, static_url_path='')
 ###############
 ctr = 0   # counter of requests since last init
 DB_PATH = './tx_cache.db'
+c2 = None  # placeholder for connection object
 
 header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
               <body><h3>Experimental Libra testnet explorer by <a href="https://twitter.com/gal_diskin">@gal_diskin</a> 
@@ -112,6 +113,7 @@ def update_counters():
 def parse_raw_tx(raw):
     ver = int(next(re.finditer(r'Transaction at version (\d+):', raw)).group(1))
     expiration = int(next(re.finditer(r'expiration_time: (\d+)s', raw)).group(1))
+    expiration = min(expiration, 2147485547)  # handle values above max unixtime
     expiration = str(datetime.fromtimestamp(expiration))
     sender = next(re.finditer(r'sender: ([a-z0-9]+),', raw)).group(1)
     target = next(re.finditer(r'ADDRESS: ([a-z0-9]+)', raw)).group(1)
@@ -123,7 +125,7 @@ def parse_raw_tx(raw):
     pubkey = next(re.finditer(r'public_key: ([a-z0-9]+),', raw)).group(1)
 
     return "(" + str(ver) + ",'" + expiration + "','" + sender + "','" + target + "','" + t_type + "'," + \
-           amount + "," + gas_price + "," + gas_max + "," + sq_num  + ",'" + pubkey + "')"
+           amount + "," + gas_price + "," + gas_max + "," + sq_num  + ",'" + pubkey + "')", ver
 
 
 def connect_to_db(path):
@@ -136,6 +138,7 @@ def get_latest_version(c):
         c.execute("SELECT MAX(version) FROM transactions")
         cur_ver = int(c.fetchall()[0][0])
     except:
+        print(1234, sys.exc_info())
         print("couldn't find any records setting current version to 0")
         cur_ver = 0
     if not type(cur_ver) is int:
@@ -163,11 +166,12 @@ def tx_db_worker():
     # get latest version in the db
     cur_ver = get_latest_version(c)
     cur_ver += 1  # TODO: later handle genesis
+    print('starting update at version', cur_ver)
 
     # start the main loop
     while True:
         try:
-            s = do_cmd("q as 0", p = p2)
+            s = do_cmd("q as 0", p = p2, delay = 0.3)
             bver = get_version_from_raw(s)
             bver = int(bver)
         except:
@@ -177,23 +181,66 @@ def tx_db_worker():
             sleep(1)
             continue
 
-        raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p = p2)
-        tx_str = parse_raw_tx(raw_tx)
-        c.execute("INSERT INTO transactions VALUES " + tx_str)
+        if bver > cur_ver + 100:
+            # batch update
+            raw_tx = do_cmd("q tr " + str(cur_ver) + " 100 false", bufsize=300000, p=p2, delay=1)
+
+            end = raw_tx.index('\nTransaction')
+            start = end + 1
+
+            for x in range(100):
+                try:
+                    end = raw_tx.index('\nTransaction', start)
+                    #print(1234, start, end)
+                    next_str = raw_tx[start:end]
+                except:
+                    break  # instead of handling the edge case and taking parsing risk just stop
+                #print(1234, next_str)
+                tx_str, ver = parse_raw_tx(next_str)
+                c.execute("INSERT INTO transactions VALUES " + tx_str)
+
+                start = end + 1
+
+            # update counter to the latest version we inserted
+            cur_ver = ver
+
+            print('batch update to version:', cur_ver, 'success')
+
+        else:
+            # singular update
+            raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p = p2)
+            tx_str = parse_raw_tx(raw_tx)
+            c.execute("INSERT INTO transactions VALUES " + tx_str)
 
         # Save (commit) the changes
         conn.commit()
 
-        # update latest version
+        # update latest version to next
         cur_ver += 1
 
         # nice print
-        if (cur_ver + 1) % 10 == 0:
+        if (cur_ver - 1) % 10 == 0:
             print('db updated to version:', cur_ver - 1)
 
 
 def get_version_from_raw(s):
     return next(re.finditer(r'(\d+)\s+$', s)).group(1)
+
+
+def get_tx_from_db_by_version(ver, c):
+    try:
+        ver = int(ver) # safety
+        print('potential attempt to inject')
+    except:
+        ver = 1
+
+    c.execute("SELECT * FROM transactions WHERE version = " + str(ver))
+    res = c.fetchall()
+
+    if len(res) > 1:
+        print('possible duplicates detected in db, record version:', ver)
+
+    return res[0]
 
 
 ##########
@@ -202,11 +249,14 @@ def get_version_from_raw(s):
 @app.route('/')
 def index():
     update_counters()
+    c2, conn = connect_to_db(DB_PATH)
 
-    s = do_cmd("q as 0", delay=1, p = p)
-    bver = get_version_from_raw(s)
-    print(bver)
-    sys.stdout.flush()
+    #s = do_cmd("q as 0", delay=1, p = p)
+    #bver = get_version_from_raw(s)
+    #print(bver)
+    #sys.stdout.flush()
+
+    bver = str(get_latest_version(c2))
 
     return index_template.format(bver)
 
@@ -214,8 +264,11 @@ def index():
 @app.route('/version/<ver>')
 def version(ver):
     update_counters()
+    c2, conn = connect_to_db(DB_PATH)
 
     ver = int(ver)
+    tx = get_tx_from_db_by_version(ver, c2)
+    print(type(tx), tx)
 
     s = do_cmd("q txn_range " + str(ver) + " 1 true", delay=1, bufsize=10000, p = p)
     try:
@@ -271,12 +324,12 @@ if __name__ == '__main__':
     tx_p = Process(target = tx_db_worker)
     tx_p.start()
 
-    #debug
-    tx_p.join()
-    sys.exit()
+    #debug multi processing
+    #tx_p.join()
+    #sys.exit()
 
     p = start_client_instance()
 
+    sleep(10)
 
-
-    app.run(port=5000, threaded=False, host='0.0.0.0', debug=True)
+    app.run(port=5000, threaded=False, host='0.0.0.0', debug=False)
