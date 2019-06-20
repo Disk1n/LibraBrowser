@@ -9,6 +9,9 @@ from time import sleep
 import os
 import re
 import sys
+import sqlite3
+from multiprocessing import Process
+from datetime import datetime
 
 
 ##############
@@ -22,6 +25,7 @@ app = Flask(__name__, static_url_path='')
 # Definitions #
 ###############
 ctr = 0   # counter of requests since last init
+DB_PATH = './tx_cache.db'
 
 header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
               <body><h3>Experimental Libra testnet explorer by <a href="https://twitter.com/gal_diskin">@gal_diskin</a> 
@@ -57,8 +61,22 @@ invalid_account_template = header + '<h1>Invalid Account format!<h1></body></htm
 ################
 # Helper funcs #
 ################
-def do_cmd(cmd, delay=0.5, bufsize=5000, decode=True):
-    global p
+def start_client_instance():
+    p = Popen(["target/debug/client", "--host", "ac.testnet.libra.org", "--port", "80",
+               "-s", "./scripts/cli/trusted_peers.config.toml"],
+              shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True, bufsize=0, universal_newlines=True)
+    sleep(5)
+    p.stdout.flush()
+    print(os.read(p.stdout.fileno(), 10000))
+
+    print('loading account')
+    print(do_cmd("a r ./test_acct", p = p))
+    sys.stdout.flush()
+
+    return p
+
+
+def do_cmd(cmd, delay=0.5, bufsize=5000, decode=True, p = None):
     p.stdin.write(cmd+'\n')
     p.stdin.flush()
     sleep(delay)
@@ -90,6 +108,94 @@ def update_counters():
     print('counter:', ctr)
     sys.stdout.flush()
 
+
+def parse_raw_tx(raw):
+    ver = int(next(re.finditer(r'Transaction at version (\d+):', raw)).group(1))
+    expiration = int(next(re.finditer(r'expiration_time: (\d+)s', raw)).group(1))
+    expiration = str(datetime.fromtimestamp(expiration))
+    sender = next(re.finditer(r'sender: ([a-z0-9]+),', raw)).group(1)
+    target = next(re.finditer(r'ADDRESS: ([a-z0-9]+)', raw)).group(1)
+    t_type = next(re.finditer(r'transaction: ([a-z_-]+),', raw)).group(1)
+    amount = str(int(next(re.finditer(r'U64: (\d+)', raw)).group(1)) / 1000000)
+    gas_price = str(int(next(re.finditer(r'gas_unit_price: (\d+),', raw)).group(1)) / 1000000)
+    gas_max   = str(int(next(re.finditer(r'max_gas_amount: (\d+),', raw)).group(1)) / 1000000)
+    sq_num = next(re.finditer(r'sequence_number: (\d+),', raw)).group(1)
+    pubkey = next(re.finditer(r'public_key: ([a-z0-9]+),', raw)).group(1)
+
+    return "(" + str(ver) + ",'" + expiration + "','" + sender + "','" + target + "','" + t_type + "'," + \
+           amount + "," + gas_price + "," + gas_max + "," + sq_num  + ",'" + pubkey + "')"
+
+
+def connect_to_db(path):
+    conn = sqlite3.connect(path)
+    return conn.cursor(), conn
+
+
+def get_latest_version(c):
+    try:
+        c.execute("SELECT MAX(version) FROM transactions")
+        cur_ver = int(c.fetchall()[0][0])
+    except:
+        print("couldn't find any records setting current version to 0")
+        cur_ver = 0
+    if not type(cur_ver) is int:
+        cur_ver = 0
+    return cur_ver
+
+
+def tx_db_worker():
+    print('transactions db worker starting')
+    p2 = start_client_instance()
+    print('client instance for tx_db started')
+
+    # connect to DB
+    c, conn = connect_to_db(DB_PATH)  # returns cursor object
+
+    # Create table if doesn't exist
+    try:
+        c.execute('''CREATE TABLE transactions
+                     (version INTEGER, expiration_date text, src text, dest text, type text, amount real, 
+                      gas_price real, max_gas real, sq_num INTEGER, pub_key text)''')
+    except:
+        print(sys.exc_info())
+        print('reusing existing db')
+
+    # get latest version in the db
+    cur_ver = get_latest_version(c)
+    cur_ver += 1  # TODO: later handle genesis
+
+    # start the main loop
+    while True:
+        try:
+            s = do_cmd("q as 0", p = p2)
+            bver = get_version_from_raw(s)
+            bver = int(bver)
+        except:
+            sleep(1)
+            continue
+        if cur_ver > bver:
+            sleep(1)
+            continue
+
+        raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p = p2)
+        tx_str = parse_raw_tx(raw_tx)
+        c.execute("INSERT INTO transactions VALUES " + tx_str)
+
+        # Save (commit) the changes
+        conn.commit()
+
+        # update latest version
+        cur_ver += 1
+
+        # nice print
+        if (cur_ver + 1) % 10 == 0:
+            print('db updated to version:', cur_ver - 1)
+
+
+def get_version_from_raw(s):
+    return next(re.finditer(r'(\d+)\s+$', s)).group(1)
+
+
 ##########
 # Routes #
 ##########
@@ -97,8 +203,8 @@ def update_counters():
 def index():
     update_counters()
 
-    s = do_cmd("q as 0", delay=1)
-    bver = next(re.finditer(r'(\d+)\s+$', s)).group(1)
+    s = do_cmd("q as 0", delay=1, p = p)
+    bver = get_version_from_raw(s)
     print(bver)
     sys.stdout.flush()
 
@@ -111,7 +217,7 @@ def version(ver):
 
     ver = int(ver)
 
-    s = do_cmd("q txn_range " + str(ver) + " 1 true", delay=1, bufsize=10000)
+    s = do_cmd("q txn_range " + str(ver) + " 1 true", delay=1, bufsize=10000, p = p)
     try:
         endtrash = next(re.finditer(r'}\s+.+$', s)).group(0)
         starttrash = next(re.finditer(r'[^:]+:', s)).group(0)
@@ -130,9 +236,9 @@ def acct_details(acct):
     if not is_valid_account(acct):
         return invalid_account_template
 
-    balance = do_cmd("q b "+acct)
+    balance = do_cmd("q b "+acct, p = p)
 
-    s = do_cmd("q s "+acct, delay=1)
+    s = do_cmd("q s "+acct, delay=1, p = p)
     print('sq num raw=', s)
     sys.stdout.flush()
     sq_num = s[len('>> Getting current sequence number '):]
@@ -140,7 +246,7 @@ def acct_details(acct):
     last_tx_sq = int(sq_num[len('Sequence number is: '):]) - 1
     last_tx_sq = max(0, last_tx_sq)
 
-    s = do_cmd("q ts "+acct+" "+str(last_tx_sq)+" true", delay=1, bufsize=10000)
+    s = do_cmd("q ts "+acct+" "+str(last_tx_sq)+" true", delay=1, bufsize=10000, p = p)
     tx_details = s[len('>> Getting committed transaction by account and sequence number '):]
 
     return account_template.format(acct, balance, sq_num, add_addr_links(tx_details))
@@ -162,15 +268,15 @@ def send_asset(path):
 # Main #
 ########
 if __name__ == '__main__':
-    p = Popen(["target/debug/client", "--host", "ac.testnet.libra.org", "--port", "80",
-               "-s", "./scripts/cli/trusted_peers.config.toml"],
-              shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True, bufsize=0, universal_newlines=True)
+    tx_p = Process(target = tx_db_worker)
+    tx_p.start()
 
-    sleep(5)
-    p.stdout.flush()
-    print(os.read(p.stdout.fileno(), 10000))
-    sys.stdout.flush()
+    #debug
+    tx_p.join()
+    sys.exit()
 
-    do_cmd("a r ./test_acct")
+    p = start_client_instance()
+
+
 
     app.run(port=5000, threaded=False, host='0.0.0.0', debug=True)
