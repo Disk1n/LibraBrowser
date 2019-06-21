@@ -76,7 +76,7 @@ def start_client_instance():
     return p
 
 
-def do_cmd(cmd, delay=0.5, bufsize=5000, decode=True, p = None):
+def do_cmd(cmd, delay=0.5, bufsize=50000, decode=True, p = None):
     p.stdin.write(cmd+'\n')
     p.stdin.flush()
     sleep(delay)
@@ -137,7 +137,8 @@ def get_latest_version(c):
         c.execute("SELECT MAX(version) FROM transactions")
         cur_ver = int(c.fetchall()[0][0])
     except:
-        print(1234, sys.exc_info())
+        print(sys.exc_info())
+        traceback.print_exception(*sys.exc_info())
         print("couldn't find any records setting current version to 0")
         cur_ver = 0
     if not type(cur_ver) is int:
@@ -161,7 +162,7 @@ def tx_db_worker():
                              (version INTEGER, expiration_date text, src text, dest text, type text, amount real, 
                               gas_price real, max_gas real, sq_num INTEGER, pub_key text)''')
             except:
-                print(sys.exc_info())
+                #print(sys.exc_info())
                 print('reusing existing db')
 
             # get latest version in the db
@@ -259,6 +260,7 @@ def get_acct_info(raw_account_status):
         recv_events = next(re.finditer(r'received_events_count: (\d+),', raw_account_status)).group(1)
     except:
         print(sys.exc_info())
+        traceback.print_exception(*sys.exc_info())
 
     return account, balance, sq_num, sent_events, recv_events
 
@@ -332,7 +334,7 @@ def acct_details(acct):
     c2, conn = connect_to_db(DB_PATH)
     bver = str(get_latest_version(c2))
 
-    s = do_cmd("q as " + acct, p = p)
+    s = do_cmd("q as " + acct, p = p, bufsize=100000, delay=1)
     acct_info = get_acct_info(s)
 
     try:
@@ -342,6 +344,7 @@ def acct_details(acct):
             tx_tbl += gen_tx_table_row(tx)
     except:
         print(sys.exc_info())
+        traceback.print_exception(*sys.exc_info())
         print('error in building table')
 
     next_page = "/account/" + acct + "?page=" + str(page + 1)
