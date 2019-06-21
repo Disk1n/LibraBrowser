@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# execute with: nohup python3 Browser.py &> browser.log < /dev/null &
+# execute in production with: nohup python3 Browser.py &> browser.log < /dev/null &
 
 ###########
 # Imports #
@@ -26,7 +26,8 @@ app = Flask(__name__, static_url_path='')
 # Definitions #
 ###############
 ctr = 0   # counter of requests since last init
-DB_PATH = './tx_cache.db'
+DB_PATH = './tx_cache.db'  # path to the db we should load
+CLIENT_PATH = '~/libra/'   # root directory of Libra client
 c2 = None  # placeholder for connection object
 
 header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
@@ -62,8 +63,9 @@ invalid_account_template = header + '<h1>Invalid Account format!<h1></body></htm
 # Helper funcs #
 ################
 def start_client_instance():
-    p = Popen(["target/debug/client", "--host", "ac.testnet.libra.org", "--port", "80",
-               "-s", "./scripts/cli/trusted_peers.config.toml"],
+    c_path = os.path.expanduser(CLIENT_PATH + "target/debug/client")
+    p = Popen([c_path, "--host", "ac.testnet.libra.org", "--port", "80",
+               "-s", "./scripts/cli/trusted_peers.config.toml"], cwd=os.path.expanduser(CLIENT_PATH),
               shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True, bufsize=0, universal_newlines=True)
     sleep(5)
     p.stdout.flush()
