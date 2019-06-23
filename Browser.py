@@ -1,4 +1,5 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # execute in production with: nohup python3 Browser.py &> browser.log < /dev/null &
 
 ###########
@@ -13,6 +14,8 @@ import sqlite3
 from multiprocessing import Process
 from datetime import datetime
 import traceback
+
+os.environ["PYTHONIOENCODING"] = "UTF-8"
 
 
 ##############
@@ -41,15 +44,15 @@ header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
               e945eec0f64069d4f171d394aa27881fabcbd3bb6bcc893162e60ad3d6c9feec</a>
 '''
 
-index_template = open('index.html.tmpl', 'r').read()
+index_template = open('index.html.tmpl', 'r', encoding='utf-8').read()
 
-version_template = open('version.html.tmpl', 'r').read()
+version_template = open('version.html.tmpl', 'r', encoding='utf-8').read()
 
 version_error_template = header + "<h1>Couldn't read version details!<h1></body></html>"
 
-stats_template = open('stats.html.tmpl', 'r').read()
+stats_template = open('stats.html.tmpl', 'r', encoding='utf-8').read()
 
-account_template = open('account.html.tmpl', 'r').read()
+account_template = open('account.html.tmpl', 'r', encoding='utf-8').read()
 
 invalid_account_template = header + '<h1>Invalid Account format!<h1></body></html>'
 
@@ -109,8 +112,8 @@ def update_counters():
 def parse_raw_tx(raw):
     ver = int(next(re.finditer(r'Transaction at version (\d+):', raw)).group(1))
     expiration_num = int(next(re.finditer(r'expiration_time: (\d+)s', raw)).group(1))
-    expiration = min(expiration_num, 2147485547)  # handle values above max unixtime
-    expiration = str(datetime.fromtimestamp(expiration))
+    expiration_num = min(expiration_num, 2147485547)  # handle values above max unixtime
+    expiration = str(datetime.fromtimestamp(expiration_num))
     sender = next(re.finditer(r'sender: ([a-z0-9]+),', raw)).group(1)
     target = next(re.finditer(r'ADDRESS: ([a-z0-9]+)', raw)).group(1)
     t_type = next(re.finditer(r'transaction: ([a-z_-]+),', raw)).group(1)
@@ -120,9 +123,7 @@ def parse_raw_tx(raw):
     sq_num = next(re.finditer(r'sequence_number: (\d+),', raw)).group(1)
     pubkey = next(re.finditer(r'public_key: ([a-z0-9]+),', raw)).group(1)
 
-    return "(" + str(ver) + ",'" + expiration + "','" + sender + "','" + target + "','" + t_type + "'," + \
-           amount + "," + gas_price + "," + gas_max + "," + sq_num  + ",'" + pubkey + "'," + \
-           str(expiration_num) + ")", ver
+    return ver, expiration, sender, target, t_type, amount, gas_price, gas_max, sq_num, pubkey, expiration_num
 
 
 def connect_to_db(path):
@@ -163,6 +164,13 @@ def tx_db_worker():
             except:
                 print('reusing existing db')
 
+                # Test DB version
+                c.execute("SELECT * FROM transactions where version = 1")
+                if len(c.fetchone()) != 11:
+                    print("DB version mismatch! please run db_upgrade.py")
+                    sys.exit()
+
+
             # get latest version in the db
             cur_ver = get_latest_version(c)
             cur_ver += 1  # TODO: later handle genesis
@@ -187,19 +195,22 @@ def tx_db_worker():
 
                     end = raw_tx.index('\nTransaction')
                     start = end + 1
+                    tx_lst = []
 
                     for x in range(100):
                         try:
                             end = raw_tx.index('\nTransaction', start)
-                            #print(1234, start, end)
                             next_str = raw_tx[start:end]
                         except:
                             break  # instead of handling the edge case and taking parsing risk just stop
-                        #print(1234, next_str)
-                        tx_str, ver = parse_raw_tx(next_str)
-                        c.execute("INSERT INTO transactions VALUES " + tx_str)
+                        tx_tuple = parse_raw_tx(next_str)
+                        ver = tx_tuple[0]
+                        tx_lst.append(tx_tuple)
 
                         start = end + 1
+
+                    # do the insert
+                    c.executemany("INSERT INTO transactions VALUES(?,?,?,?,?,?,?,?,?,?,?);", tx_lst)
 
                     # update counter to the latest version we inserted
                     cur_ver = ver
@@ -209,8 +220,8 @@ def tx_db_worker():
                 else:
                     # singular update
                     raw_tx = do_cmd("q tr " + str(cur_ver) + " 1 false", bufsize=10000, p=p2, delay=2)
-                    tx_str, ver = parse_raw_tx(raw_tx)
-                    c.execute("INSERT INTO transactions VALUES " + tx_str)
+                    tx_tuple = parse_raw_tx(raw_tx)
+                    c.execute("INSERT INTO transactions VALUES(?,?,?,?,?,?,?,?,?,?,?);", tx_tuple)
 
                 # Save (commit) the changes
                 conn.commit()
@@ -288,43 +299,69 @@ def days_hours_minutes_seconds(td):
     return td.days, td.seconds//3600, (td.seconds//60) % 60, (td.seconds % 60)
 
 
-def calc_stats(c):
+def calc_stats(c, limit = None):
     # helper
     str_to_datetime = lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S")
 
-    # mints
-    c.execute("SELECT count(DISTINCT version) FROM transactions WHERE type = 'mint_transaction'")
-    mint_count = c.fetchall()[0][0]
-    c.execute("SELECT DISTINCT version FROM transactions WHERE type = 'mint_transaction'")
-    mint_sum = sum([x[0] for x in c.fetchall()])
+    # time
+    cur_time = datetime.now()
 
-    # p2p txs
-    c.execute("SELECT count(DISTINCT version) FROM transactions WHERE type = 'peer_to_peer_transaction'")
-    p2p_count = c.fetchall()[0][0]
-    c.execute("SELECT DISTINCT version FROM transactions WHERE type = 'peer_to_peer_transaction'")
-    p2p_sum = sum([x[0] for x in c.fetchall()])
+    # time expression
+    if limit:
+        n = int(cur_time.timestamp()) - limit
+        t_str = ' and expiration_unixtime >= ' + str(n) + ' and expiration_unixtime < 2147485547'
 
-    # add 1 to account for the genesis block until it is added to DB
-    c.execute("SELECT count(DISTINCT version) FROM transactions " +
-              "WHERE (type != 'peer_to_peer_transaction') and (type != 'mint_transaction')")
-    other_tx_count = c.fetchall()[0][0] + 1   # TODO: remove +1 once we add genesis block support
-    c.execute("SELECT DISTINCT version FROM transactions " +
-              "WHERE (type != 'peer_to_peer_transaction') and (type != 'mint_transaction')")
-    other_sum = sum([x[0] for x in c.fetchall()])
+    else:
+        t_str = ''
 
-    print('p2p + mint =', mint_count + p2p_count)
+    # first block
+    c.execute("SELECT MIN(version) FROM transactions WHERE version > 0" + t_str)
+    first_version = c.fetchall()[0][0]
+    first_block_time = datetime.fromtimestamp(get_tx_from_db_by_version(first_version, c)[10])
 
     # get max block
     last_block = get_latest_version(c)
     print('last block = ', last_block)
 
-    # time
-    cur_time = datetime.now()
-    block1_time = str_to_datetime(get_tx_from_db_by_version(1, c)[1])
+    # deltas
+    td = cur_time - first_block_time
+    dhms = days_hours_minutes_seconds(td)
+    blocks_delta = last_block - first_version + 1
 
-    td = cur_time - block1_time
+    # mints
+    c.execute("SELECT count(DISTINCT version) FROM transactions WHERE type = 'mint_transaction'" + t_str)
+    mint_count = c.fetchall()[0][0]
+    c.execute("SELECT DISTINCT version FROM transactions WHERE type = 'mint_transaction'" + t_str)
+    mint_sum = sum([x[0] for x in c.fetchall()])
 
-    return td, last_block, mint_count, p2p_count, other_tx_count, mint_sum, p2p_sum, other_sum
+    # p2p txs
+    c.execute("SELECT count(DISTINCT version) FROM transactions WHERE type = 'peer_to_peer_transaction'" + t_str)
+    p2p_count = c.fetchall()[0][0]
+    c.execute("SELECT DISTINCT version FROM transactions WHERE type = 'peer_to_peer_transaction'" + t_str)
+    p2p_sum = sum([x[0] for x in c.fetchall()])
+
+    # add 1 to account for the genesis block until it is added to DB
+    c.execute("SELECT count(DISTINCT version) FROM transactions " +
+              "WHERE (type != 'peer_to_peer_transaction') and (type != 'mint_transaction')" + t_str)
+    other_tx_count = c.fetchall()[0][0]
+    if limit is None:
+        other_tx_count += 1  # TODO: this is for genesis block - remove later
+    c.execute("SELECT DISTINCT version FROM transactions " +
+              "WHERE (type != 'peer_to_peer_transaction') and (type != 'mint_transaction')" + t_str)
+    other_sum = sum([x[0] for x in c.fetchall()])
+
+    print('p2p + mint =', mint_count + p2p_count)
+
+    # unique accounts
+    c.execute("SELECT COUNT(DISTINCT dest) FROM transactions WHERE version > 0" + t_str)
+    count_dest = c.fetchone()[0]
+    c.execute("SELECT COUNT(DISTINCT src) FROM transactions WHERE version > 0" + t_str)
+    count_src = c.fetchone()[0]
+
+    r = (blocks_delta, *dhms, blocks_delta/td.total_seconds(), 100*mint_count/blocks_delta,
+         100*p2p_count/blocks_delta, 100*other_tx_count/blocks_delta, mint_sum, p2p_sum, other_sum,
+         count_dest, count_src)
+    return r
 
 
 ##########
@@ -410,18 +447,12 @@ def stats():
     c2, conn = connect_to_db(DB_PATH)
     try:
         # get stats
-        td, last_block, mint_count, p2p_count, other_tx_count, mint_sum, p2p_sum, other_sum = calc_stats(c2)
+        stats_all_time = calc_stats(c2)
+        stats_24_hours = calc_stats(c2, limit = 3600 * 24)[5:]
+        stats_one_hour = calc_stats(c2, limit = 3600)[5:]
 
-        # Network uptime
-        dhms = days_hours_minutes_seconds(td)
 
-        # last hour stats
-        #c.execute('SELECT MIN(version) FROM transactions WHERE expiration_unixtime >= ' + str(n) +
-        #          ' and expiration_unixtime < 2147485547')
-
-        ret = stats_template.format(last_block, *dhms, last_block/td.total_seconds(),
-                                    100*mint_count/last_block, 100*p2p_count/last_block, 100*other_tx_count/last_block,
-                                    mint_sum, p2p_sum, other_sum)
+        ret = stats_template.format(*stats_all_time, *stats_24_hours, *stats_one_hour)
     except:
         print(sys.exc_info())
         traceback.print_exception(*sys.exc_info())
