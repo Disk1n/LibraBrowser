@@ -47,14 +47,9 @@ version_template = open('version.html.tmpl', 'r').read()
 
 version_error_template = header + "<h1>Couldn't read version details!<h1></body></html>"
 
-account_template = open('account.html.tmpl', 'r').read()
+stats_template = open('stats.html.tmpl', 'r').read()
 
-old_account_template = header + '''<h2><b>Details about account: {0} </b></h2>
-                               <h2> {1} </h2>
-                               <h2> {2} </h2>
-                               <h2> Last tx details:</h2> {3} 
-                               </body></html>
-'''
+account_template = open('account.html.tmpl', 'r').read()
 
 invalid_account_template = header + '<h1>Invalid Account format!<h1></body></html>'
 
@@ -113,8 +108,8 @@ def update_counters():
 
 def parse_raw_tx(raw):
     ver = int(next(re.finditer(r'Transaction at version (\d+):', raw)).group(1))
-    expiration = int(next(re.finditer(r'expiration_time: (\d+)s', raw)).group(1))
-    expiration = min(expiration, 2147485547)  # handle values above max unixtime
+    expiration_num = int(next(re.finditer(r'expiration_time: (\d+)s', raw)).group(1))
+    expiration = min(expiration_num, 2147485547)  # handle values above max unixtime
     expiration = str(datetime.fromtimestamp(expiration))
     sender = next(re.finditer(r'sender: ([a-z0-9]+),', raw)).group(1)
     target = next(re.finditer(r'ADDRESS: ([a-z0-9]+)', raw)).group(1)
@@ -126,7 +121,8 @@ def parse_raw_tx(raw):
     pubkey = next(re.finditer(r'public_key: ([a-z0-9]+),', raw)).group(1)
 
     return "(" + str(ver) + ",'" + expiration + "','" + sender + "','" + target + "','" + t_type + "'," + \
-           amount + "," + gas_price + "," + gas_max + "," + sq_num  + ",'" + pubkey + "')", ver
+           amount + "," + gas_price + "," + gas_max + "," + sq_num  + ",'" + pubkey + "'," + \
+           str(expiration_num) + ")", ver
 
 
 def connect_to_db(path):
@@ -161,10 +157,10 @@ def tx_db_worker():
             # Create table if doesn't exist
             try:
                 c.execute('''CREATE TABLE transactions
-                             (version INTEGER, expiration_date text, src text, dest text, type text, amount real, 
-                              gas_price real, max_gas real, sq_num INTEGER, pub_key text)''')
+                             (version INTEGER NOT NULL PRIMARY KEY, expiration_date text, src text, dest text, 
+                             type text, amount real, gas_price real, max_gas real, sq_num INTEGER, pub_key text,
+                             expiration_unixtime INTEGER)''')
             except:
-                #print(sys.exc_info())
                 print('reusing existing db')
 
             # get latest version in the db
@@ -288,6 +284,49 @@ def get_all_account_tx(c, acct, page):
     return res
 
 
+def days_hours_minutes_seconds(td):
+    return td.days, td.seconds//3600, (td.seconds//60) % 60, (td.seconds % 60)
+
+
+def calc_stats(c):
+    # helper
+    str_to_datetime = lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S")
+
+    # mints
+    c.execute("SELECT count(DISTINCT version) FROM transactions WHERE type = 'mint_transaction'")
+    mint_count = c.fetchall()[0][0]
+    c.execute("SELECT DISTINCT version FROM transactions WHERE type = 'mint_transaction'")
+    mint_sum = sum([x[0] for x in c.fetchall()])
+
+    # p2p txs
+    c.execute("SELECT count(DISTINCT version) FROM transactions WHERE type = 'peer_to_peer_transaction'")
+    p2p_count = c.fetchall()[0][0]
+    c.execute("SELECT DISTINCT version FROM transactions WHERE type = 'peer_to_peer_transaction'")
+    p2p_sum = sum([x[0] for x in c.fetchall()])
+
+    # add 1 to account for the genesis block until it is added to DB
+    c.execute("SELECT count(DISTINCT version) FROM transactions " +
+              "WHERE (type != 'peer_to_peer_transaction') and (type != 'mint_transaction')")
+    other_tx_count = c.fetchall()[0][0] + 1   # TODO: remove +1 once we add genesis block support
+    c.execute("SELECT DISTINCT version FROM transactions " +
+              "WHERE (type != 'peer_to_peer_transaction') and (type != 'mint_transaction')")
+    other_sum = sum([x[0] for x in c.fetchall()])
+
+    print('p2p + mint =', mint_count + p2p_count)
+
+    # get max block
+    last_block = get_latest_version(c)
+    print('last block = ', last_block)
+
+    # time
+    cur_time = datetime.now()
+    block1_time = str_to_datetime(get_tx_from_db_by_version(1, c)[1])
+
+    td = cur_time - block1_time
+
+    return td, last_block, mint_count, p2p_count, other_tx_count, mint_sum, p2p_sum, other_sum
+
+
 ##########
 # Routes #
 ##########
@@ -315,7 +354,6 @@ def version(ver):
     except:
         conn.close()
         return version_error_template
-
 
     conn.close()
     return version_template.format(bver, *tx)
@@ -365,6 +403,33 @@ def search_redir():
         print('redir to tx', tgt)
         return redirect('/version/'+tgt)
 
+
+@app.route('/stats')
+def stats():
+    update_counters()
+    c2, conn = connect_to_db(DB_PATH)
+    try:
+        # get stats
+        td, last_block, mint_count, p2p_count, other_tx_count, mint_sum, p2p_sum, other_sum = calc_stats(c2)
+
+        # Network uptime
+        dhms = days_hours_minutes_seconds(td)
+
+        # last hour stats
+        #c.execute('SELECT MIN(version) FROM transactions WHERE expiration_unixtime >= ' + str(n) +
+        #          ' and expiration_unixtime < 2147485547')
+
+        ret = stats_template.format(last_block, *dhms, last_block/td.total_seconds(),
+                                    100*mint_count/last_block, 100*p2p_count/last_block, 100*other_tx_count/last_block,
+                                    mint_sum, p2p_sum, other_sum)
+    except:
+        print(sys.exc_info())
+        traceback.print_exception(*sys.exc_info())
+        print('error in stats')
+
+    conn.close()
+
+    return ret
 
 @app.route('/assets/<path:path>')
 def send_asset(path):
