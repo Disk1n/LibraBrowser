@@ -15,8 +15,6 @@ from multiprocessing import Process
 from datetime import datetime
 import traceback
 
-os.environ["PYTHONIOENCODING"] = "UTF-8"
-
 
 ##############
 # Flask init #
@@ -462,6 +460,7 @@ def stats():
 
     return ret
 
+
 @app.route('/assets/<path:path>')
 def send_asset(path):
     return send_from_directory('assets', path)
@@ -473,10 +472,6 @@ def send_asset(path):
 if __name__ == '__main__':
     tx_p = Process(target = tx_db_worker)
     tx_p.start()
-
-    #debug multi processing
-    #tx_p.join()
-    #sys.exit()
 
     p = start_client_instance()
 
