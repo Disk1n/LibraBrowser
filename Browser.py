@@ -28,7 +28,7 @@ app = Flask(__name__, static_url_path='')
 ###############
 ctr = 0   # counter of requests since last init
 DB_PATH = './tx_cache.db'  # path to the db we should load
-CLIENT_PATH = '~/libra/'   # root directory of Libra client  #FIXME: dev change
+CLIENT_PATH = '~/libra/'   # root directory of Libra client
 c2 = None  # placeholder for connection object
 
 header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
@@ -70,6 +70,18 @@ def is_valid_account(acct):
         print("invalid Account:", acct)
         return False
     return True
+
+
+def gen_tx_table_row(tx):
+    res  = '<tr><td>'
+    res += '<a href="/version/' + str(tx[0]) + '">' + str(tx[0]) + '</a></td><td>'  # Version
+    res += str(tx[1]) + '</td><td>'                                                 # expiration date
+    res += '<a href="/account/' + str(tx[2]) + '">' + str(tx[2]) + '</a> &rarr; '   # source
+    res += '<a href="/account/' + str(tx[3]) + '">' + str(tx[3]) + '</a></td><td>'  # dest
+    res += '<strong>' + str(tx[5]) + ' Libra</strong></td>'                         # amount
+    res += '</tr>'
+
+    return res
 
 
 ##########
@@ -187,15 +199,3 @@ if __name__ == '__main__':
     sleep(5)
 
     app.run(port=5000, threaded=False, host='0.0.0.0', debug=False)
-
-
-def gen_tx_table_row(tx):
-    res  = '<tr><td>'
-    res += '<a href="/version/' + str(tx[0]) + '">' + str(tx[0]) + '</a></td><td>'  # Version
-    res += str(tx[1]) + '</td><td>'                                                 # expiration date
-    res += '<a href="/account/' + str(tx[2]) + '">' + str(tx[2]) + '</a> &rarr; '   # source
-    res += '<a href="/account/' + str(tx[3]) + '">' + str(tx[3]) + '</a></td><td>'  # dest
-    res += '<strong>' + str(tx[5]) + ' Libra</strong></td>'                         # amount
-    res += '</tr>'
-
-    return res
