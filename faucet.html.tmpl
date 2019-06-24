@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<!-- Global site tag (gtag.js) - Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-326971-2"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){{dataLayer.push(arguments);}}
+	  gtag('js', new Date());
+
+	  gtag('config', 'UA-326971-2');
+	</script>
+	<!-- end analytics -->
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Experimental Libra Testnet Explorer</title>
+	<meta name="description" content="Experimental Libra testnet explorer by @gal_diskin and Daniel Prinz of First Group" />
+	<meta name="keywords" content="Libra, libracoin, libra coin, facebook coin, calibra" />
+	<meta name="author" content="Gal Diskin, Daniel Prinz, First Group"/>
+
+	<!-- Favicon -->
+	<link rel="icon" type="image/png" href="/assets/images/favicon.png" />
+
+	<!-- Bootstrap & Plugins CSS -->
+	<link href="/assets/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+	<link href="/assets/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+	<!-- Custom CSS -->
+	<link href="/assets/css/purple.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+
+	<div class="loading-wrapper">
+		<div class="loading">
+			<div></div>
+			<div></div>
+			<div></div>
+		</div>
+	</div>	
+
+	<!-- ***** Header Area Start ***** -->
+	<header class="header-area">
+		<div class="container">
+			<div class="row">
+				<div class="col-12">
+					<nav class="main-nav">
+						<!-- ***** Logo Start ***** -->
+						<a href="/" class="logo">
+							<img src="/assets/images/logos/transparent-logo.png" style="max-height: 40px;" class="light-logo" alt="Libra Testnet Block Explorer"/>
+							<img src="/assets/images/logos/white-logo.png" style="max-height: 40px;" class="dark-logo" alt="Libra Testnet Block Explorer"/>
+						</a>
+						<!-- ***** Logo End ***** -->
+
+						<!-- ***** Menu Start ***** -->
+						<ul class="nav">
+							<li><a href="/">HOME</a></li>
+							<li><a href="/stats">STATISTICS</a></li>
+							<li><a href="/version/{0}">LATEST BLOCK</a></li>
+						</ul>
+						<a class='menu-trigger'>
+							<span>Menu</span>
+						</a>
+						<!-- ***** Menu End ***** -->						
+					</nav>
+				</div>
+			</div>
+		</div>
+	</header>
+	<!-- ***** Header Area End ***** -->
+
+	<!-- ***** Welcome Area Start ***** -->
+	<section class="block-explorer-wrapper bg-bottom-center" id="welcome-1">
+		<div class="block-explorer text">
+			<div class="container text-center">
+				<div class="row">
+					<div class="col-lg-12 align-self-center">
+						<h1>Libra Testnet Explorer</h1>
+					</div>
+					<div class="offset-lg-3 col-lg-6">
+						<p>Testnet Version / Up To Block {0}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="search">
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						<div class="input-wrapper">
+							<div class="input">
+								<form action="/search">
+									<input type="text" placeholder="Account details / Transaction version" name="acct">
+									<button><i class="fa fa-search"></i></button>
+								</form>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>	
+	</section>
+	<!-- ***** Welcome Area End ***** -->
+
+	<section class="block-explorer-section section bg-bottom">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="center-heading">
+						<h2 class="section-title">Faucet</h2>
+					</div>
+				</div>
+			</div>
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						{1}
+						<div class="text-center">
+							<p>Please input target account and amount to receive</p><br>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="d-flex justify-content-center align-items-center container">
+				<div class="row">
+								<form action="/faucet" method="post" class="form-horizontal">
+									<div class="form-group">
+										<label for="acct" class="control-label">Account</label>
+										<input type="text" class="form-control-static" placeholder="Account" name="acct" id="acct">
+									</div>
+									<div class="form-group">
+										<label for="amount" class="control-label">Amount</label>
+										<input type="text" class="form-control-static" placeholder="Amount" name="amount" id="amount">
+									</div>
+									<button class="btn btn-primary btn-block" type="submit">Send Funds</button>
+								</form>
+				</div>
+			</div>
+
+		</div>
+	</section>
+
+
+	<!-- ***** Contact & Footer Start ***** -->
+	<footer id="contact">
+		<div class="footer-bottom slim">
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						<p class="copyright">2019 © <a href="http://firstdag.com" style="color: white;">First - Digital Assets Group</a></p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</footer>
+	<!-- ***** Contact & Footer End ***** -->
+
+
+	<!-- jQuery -->
+	<script src="/assets/js/jquery-2.1.0.min.js"></script>
+
+	<!-- Bootstrap -->
+	<script src="/assets/js/popper.js"></script>
+	<script src="/assets/js/bootstrap.min.js"></script>
+
+	<!-- Plugins -->
+	<script src="/assets/js/particles.min.js"></script>
+	<script src="/assets/js/scrollreveal.min.js"></script>
+	<script src="/assets/js/jquery.downCount.js"></script>
+	<script src="/assets/js/parallax.min.js"></script>
+
+	<!-- Global Init -->
+	<script src="/assets/js/particle-purple.js"></script>
+	<script src="/assets/js/custom.js"></script>
+</body>
+</html>

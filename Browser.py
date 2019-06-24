@@ -52,6 +52,10 @@ stats_template = open('stats.html.tmpl', 'r', encoding='utf-8').read()
 
 account_template = open('account.html.tmpl', 'r', encoding='utf-8').read()
 
+faucet_template = open('faucet.html.tmpl', 'r', encoding='utf-8').read()
+
+faucet_alert_template = '<div class="text-center"><div class="alert alert-danger" role="alert"><p>{0}</p></div></div>'
+
 invalid_account_template = header + '<h1>Invalid Account format!<h1></body></html>'
 
 
@@ -180,6 +184,36 @@ def stats():
     conn.close()
 
     return ret
+
+
+@app.route('/faucet', methods=['GET', 'POST'])
+def faucet():
+    update_counters()
+
+    c2, conn = connect_to_db(DB_PATH)
+    bver = str(get_latest_version(c2))
+
+    message = ''
+    if request.method == 'POST':
+        try:
+            acct = request.form.get('acct')
+            print(acct)
+            amount = request.form.get('amount')
+            print(amount)
+            if float(amount) < 0:
+                message = 'Amount must be >= 0'
+            elif not is_valid_account(acct):
+                message = 'Invalid account format'
+            else:
+                do_cmd('a m ' + acct + ' ' + str(float(amount)), p = p)
+                acct_link = '<a href="/account/{0}">{0}</a>'.format(acct)
+                message = 'Sent ' + amount + ' <small>Libra</small> to ' + acct_link
+        except:
+            traceback.print_exception(*sys.exc_info())
+            message = 'Invalid request logged!'
+        if message:
+            message = faucet_alert_template.format(message)
+    return faucet_template.format(bver, message)
 
 
 @app.route('/assets/<path:path>')
