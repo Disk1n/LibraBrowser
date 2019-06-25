@@ -28,7 +28,7 @@ app = Flask(__name__, static_url_path='')
 ###############
 ctr = 0   # counter of requests since last init
 DB_PATH = './tx_cache.db'  # path to the db we should load
-CLIENT_PATH = '~/libra/'   # root directory of Libra client
+CLIENT_PATH = '~/Source/libra/'   # root directory of Libra client  #FIXME: dev change
 c2 = None  # placeholder for connection object
 
 header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
@@ -80,8 +80,10 @@ def gen_tx_table_row(tx):
     res  = '<tr><td>'
     res += '<a href="/version/' + str(tx[0]) + '">' + str(tx[0]) + '</a></td><td>'  # Version
     res += str(tx[1]) + '</td><td>'                                                 # expiration date
-    res += '<a href="/account/' + str(tx[2]) + '">' + str(tx[2]) + '</a> &rarr; '   # source
-    res += '<a href="/account/' + str(tx[3]) + '">' + str(tx[3]) + '</a></td><td>'  # dest
+    res += ('&#x1f91d;' if tx[4] == 'peer_to_peer_transaction' else '&#x1f6e0;') + '</td><td>'   # type
+    res += '<p class="text-monospace">'
+    res += '<a href="/account/' + str(tx[2]) + '">' + str(tx[2]) + '</a> &rarr; '          # source
+    res += '<a href="/account/' + str(tx[3]) + '">' + str(tx[3]) + '</a></p></td><td>'  # dest
     res += '<strong>' + str(tx[5]) + ' Libra</strong></td>'                         # amount
     res += '</tr>'
 
@@ -211,8 +213,10 @@ def faucet():
         except:
             traceback.print_exception(*sys.exc_info())
             message = 'Invalid request logged!'
+
         if message:
             message = faucet_alert_template.format(message)
+
     return faucet_template.format(bver, message)
 
 
