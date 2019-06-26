@@ -11,7 +11,8 @@ import sys
 from multiprocessing import Process
 import traceback
 
-from client import start_client_instance, do_cmd, get_acct_info
+from rpc_client import get_acct_raw, get_acct_info, start_rpc_client_instance
+from client import start_client_instance, do_cmd
 from db_funcs import connect_to_db, get_latest_version, get_tx_from_db_by_version, get_all_account_tx, tx_db_worker
 from stats import calc_stats
 
@@ -28,7 +29,7 @@ app = Flask(__name__, static_url_path='')
 ###############
 ctr = 0   # counter of requests since last init
 DB_PATH = './tx_cache.db'  # path to the db we should load
-CLIENT_PATH = '~/Source/libra/'   # root directory of Libra client  #FIXME: dev change
+CLIENT_PATH = '~/libra/'   # root directory of Libra client
 c2 = None  # placeholder for connection object
 
 header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
@@ -90,6 +91,18 @@ def gen_tx_table_row(tx):
     return res
 
 
+def add_br_every64(s):
+    x = len(s)
+    i = 0
+    res = ''
+    while i+64 < x:
+        res += s[i:i+64] + '<br>'
+        i += 64
+    res += s[i:]
+
+    return res
+
+
 ##########
 # Routes #
 ##########
@@ -118,8 +131,19 @@ def version(ver):
         conn.close()
         return version_error_template
 
+    # for toggle raw view
+    if request.args.get('raw') == '1':
+        extra = """<tr>
+                    <td><strong>Program Raw</strong></td>
+                    <td><pre>{0}</pre></td>
+                   </tr>""".format(tx[-1])
+        not_raw = '0'
+    else:
+        extra = ''
+        not_raw = '1'
+
     conn.close()
-    return version_template.format(bver, *tx)
+    return version_template.format(bver, *tx, add_br_every64(tx[12]), extra, not_raw)
 
 
 @app.route('/account/<acct>')
@@ -137,8 +161,9 @@ def acct_details(acct):
     c2, conn = connect_to_db(DB_PATH)
     bver = str(get_latest_version(c2))
 
-    s = do_cmd("q as " + acct, p = p, bufsize=100000, delay=1)
-    acct_info = get_acct_info(s)
+    acct_state_raw = get_acct_raw(acct)
+    acct_info = get_acct_info(acct_state_raw)
+    print('acct_info', acct_info)
 
     try:
         tx_list = get_all_account_tx(c2, acct, page)
@@ -174,7 +199,7 @@ def stats():
     try:
         # get stats
         stats_all_time = calc_stats(c2)
-        stats_24_hours = calc_stats(c2, limit =3600 * 24)[5:]
+        stats_24_hours = calc_stats(c2, limit = 3600 * 24)[5:]
         stats_one_hour = calc_stats(c2, limit = 3600)[5:]
 
         ret = stats_template.format(*stats_all_time, *stats_24_hours, *stats_one_hour)
@@ -229,11 +254,13 @@ def send_asset(path):
 # Main #
 ########
 if __name__ == '__main__':
-    tx_p = Process(target=tx_db_worker, args=(CLIENT_PATH, DB_PATH))
+    tx_p = Process(target=tx_db_worker, args=(DB_PATH, ))
     tx_p.start()
+
+    start_rpc_client_instance()
 
     p = start_client_instance(CLIENT_PATH)
 
-    sleep(5)
+    sleep(1)
 
     app.run(port=5000, threaded=False, host='0.0.0.0', debug=False)
