@@ -143,7 +143,7 @@ def version(ver):
         not_raw = '1'
 
     conn.close()
-    return version_template.format(bver, *tx, add_br_every64(tx[12]), extra, not_raw)
+    return version_template.format(bver, *tx, add_br_every64(tx[12]), extra, not_raw, tx[-2].replace('<', '&lt;'))
 
 
 @app.route('/account/<acct>')
