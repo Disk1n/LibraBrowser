@@ -126,9 +126,9 @@ def parse_raw_tx_lst(struct_lst, infos, raw, events):
         tmp['sender'] = bytes.hex(tx.sender_account)
         tmp['target'] = bytes.hex(tx.program.arguments[0].data)
         tmp['t_type'] = 'peer_to_peer_transaction' if tmp['sender'] != MINT_ACCOUNT else 'mint_transaction'
-        tmp['amount'] = struct.unpack("<q", tx.program.arguments[1].data)[0]
-        tmp['gas_price'] = tx.gas_unit_price
-        tmp['gas_max'] = tx.max_gas_amount
+        tmp['amount'] = struct.unpack("<q", tx.program.arguments[1].data)[0] / 1000000
+        tmp['gas_price'] = tx.gas_unit_price / 1000000
+        tmp['gas_max'] = tx.max_gas_amount / 1000000
         tmp['sq_num'] = tx.sequence_number
         tmp['pubkey'] = bytes.hex(r.sender_public_key)
         tmp['expiration_num'] = min(tx.expiration_time, 2**63 - 1)
