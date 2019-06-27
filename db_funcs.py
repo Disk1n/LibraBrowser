@@ -8,6 +8,8 @@ import sys
 import traceback
 from time import sleep
 
+import struct
+
 # from client import start_client_instance, do_cmd, parse_raw_tx
 from rpc_client import get_latest_version_from_ledger, get_raw_tx_lst, parse_raw_tx_lst, start_rpc_client_instance
 
@@ -34,6 +36,17 @@ def get_latest_version(c):
     return cur_ver
 
 
+def parse_db_row(row):
+    r = list(row)
+    r[5] = struct.unpack('<Q', r[5])[0] / 1000000
+    r[6] = struct.unpack('<Q', r[6])[0] / 1000000
+    r[7] = struct.unpack('<Q', r[7])[0] / 1000000
+    r[10] = struct.unpack('<Q', r[10])[0]
+    r[11] = struct.unpack('<Q', r[11])[0] / 1000000
+
+    return r
+
+
 def get_tx_from_db_by_version(ver, c):
     try:
         ver = int(ver)   # safety
@@ -43,6 +56,7 @@ def get_tx_from_db_by_version(ver, c):
 
     c.execute("SELECT * FROM transactions WHERE version = " + str(ver))
     res = c.fetchall()
+    res = [parse_db_row(row) for row in res]
 
     if len(res) > 1:
         print('possible duplicates detected in db, record version:', ver)
@@ -55,6 +69,7 @@ def get_all_account_tx(c, acct, page):
     c.execute("SELECT * FROM transactions WHERE (src = '"+acct+"') OR (dest = '"+acct+"')" +
               "ORDER BY version DESC LIMIT " + offset + ",100")
     res = c.fetchall()
+    res = [parse_db_row(row) for row in res]
 
     return res
 
@@ -64,8 +79,8 @@ def init_db(c):
     try:
         c.execute('''CREATE TABLE transactions
                              (version INTEGER NOT NULL PRIMARY KEY, expiration_date text, src text, dest text, 
-                             type text, amount real, gas_price real, max_gas real, sq_num INTEGER, pub_key text,
-                             expiration_unixtime INTEGER, gas_used real, sender_sig text, signed_tx_hash text,
+                             type text, amount text, gas_price text, max_gas text, sq_num INTEGER, pub_key text,
+                             expiration_unixtime text, gas_used text, sender_sig text, signed_tx_hash text,
                              state_root_hash text, event_root_hash text, code_hex text, program text)''')
     except:
         print('reusing existing db')
@@ -109,7 +124,7 @@ def tx_db_worker(db_path='./tx_cache.db'):
                     continue
 
                 # batch update
-                num = min(5000, bver - cur_ver)  # at most 5000 records at once
+                num = min(1000, bver - cur_ver)  # at most 5000 records at once
                 tx_data = get_raw_tx_lst(cur_ver, num)
 
                 # read records

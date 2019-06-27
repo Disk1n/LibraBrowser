@@ -71,8 +71,8 @@ def get_acct_raw(acct):
 def get_acct_info(state):
     try:
         #struct inferred from: https://github.com/libra/libra/blob/master/types/src/account_config.rs#L129
-        acct_state = struct.unpack_from('32sqqqq', state.account_state_with_proof.blob.blob,
-                           len(state.account_state_with_proof.blob.blob) - struct.calcsize('32sqqqq'))
+        acct_state = struct.unpack_from('32sQQQQ', state.account_state_with_proof.blob.blob,
+                           len(state.account_state_with_proof.blob.blob) - struct.calcsize('32sQQQQ'))
 
         account = bytes.hex(acct_state[0])
         balance = acct_state[1] / 1000000
@@ -126,14 +126,14 @@ def parse_raw_tx_lst(struct_lst, infos, raw, events):
         tmp['sender'] = bytes.hex(tx.sender_account)
         tmp['target'] = bytes.hex(tx.program.arguments[0].data)
         tmp['t_type'] = 'peer_to_peer_transaction' if tmp['sender'] != MINT_ACCOUNT else 'mint_transaction'
-        tmp['amount'] = struct.unpack("<q", tx.program.arguments[1].data)[0] / 1000000
-        tmp['gas_price'] = tx.gas_unit_price / 1000000
-        tmp['gas_max'] = tx.max_gas_amount / 1000000
+        tmp['amount'] = tx.program.arguments[1].data
+        tmp['gas_price'] = struct.pack("<Q", tx.gas_unit_price)
+        tmp['gas_max'] = struct.pack("<Q", tx.max_gas_amount)
         tmp['sq_num'] = tx.sequence_number
         tmp['pubkey'] = bytes.hex(r.sender_public_key)
-        tmp['expiration_num'] = min(tx.expiration_time, 2**63 - 1)
+        tmp['expiration_num'] = struct.pack("<Q", tx.expiration_time)
 
-        tmp['gas_used'] = info.gas_used / 1000000
+        tmp['gas_used'] = struct.pack("<Q", info.gas_used)
 
         tmp['sender_sig'] = bytes.hex(r.sender_signature)
         tmp['signed_tx_hash'] = bytes.hex(info.signed_transaction_hash)
