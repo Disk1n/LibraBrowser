@@ -151,4 +151,5 @@ def tx_db_worker(db_path='./tx_cache.db'):
         except:
             print('Major error in tx_db_worker, details:', sys.exc_info())
             traceback.print_exception(*sys.exc_info())
+            sleep(2)
             print('restarting tx_db_worker')
