@@ -232,7 +232,8 @@ def faucet():
             elif not is_valid_account(acct):
                 message = 'Invalid account format'
             else:
-                do_cmd('a m ' + acct + ' ' + str(float(amount)), p = p)
+                do_cmd('a mb 0 ' + str(float(amount)), p = p)
+                do_cmd('tb 0 ' + acct + ' ' + str(float(amount)), p = p)
                 acct_link = '<a href="/account/{0}">{0}</a>'.format(acct)
                 message = 'Sent ' + amount + ' <small>Libra</small> to ' + acct_link
         except:
