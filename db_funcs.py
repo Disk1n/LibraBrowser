@@ -41,7 +41,6 @@ def parse_db_row(row):
     r[5] = struct.unpack('<Q', r[5])[0] / 1000000
     r[6] = struct.unpack('<Q', r[6])[0] / 1000000
     r[7] = struct.unpack('<Q', r[7])[0] / 1000000
-    r[10] = struct.unpack('<Q', r[10])[0]
     r[11] = struct.unpack('<Q', r[11])[0] / 1000000
 
     return r
@@ -80,7 +79,7 @@ def init_db(c):
         c.execute('''CREATE TABLE transactions
                              (version INTEGER NOT NULL PRIMARY KEY, expiration_date text, src text, dest text, 
                              type text, amount text, gas_price text, max_gas text, sq_num INTEGER, pub_key text,
-                             expiration_unixtime text, gas_used text, sender_sig text, signed_tx_hash text,
+                             expiration_unixtime INTEGER, gas_used text, sender_sig text, signed_tx_hash text,
                              state_root_hash text, event_root_hash text, code_hex text, program text)''')
     except:
         print('reusing existing db')

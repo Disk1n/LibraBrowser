@@ -131,7 +131,7 @@ def parse_raw_tx_lst(struct_lst, infos, raw, events):
         tmp['gas_max'] = struct.pack("<Q", tx.max_gas_amount)
         tmp['sq_num'] = tx.sequence_number
         tmp['pubkey'] = bytes.hex(r.sender_public_key)
-        tmp['expiration_num'] = struct.pack("<Q", tx.expiration_time)
+        tmp['expiration_num'] = min(tx.expiration_time, 2**63 - 1)
 
         tmp['gas_used'] = struct.pack("<Q", info.gas_used)
 

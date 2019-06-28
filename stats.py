@@ -16,17 +16,16 @@ def days_hours_minutes_seconds(td):
 
 
 def calc_stats(c, limit = None):
-    # helper
-    str_to_datetime = lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S")
-
     # time
     cur_time = datetime.now()
 
     # time expression
     if limit:
         n = int(cur_time.timestamp()) - limit
-        t_str = ' and expiration_unixtime >= ' + str(n) + ' and expiration_unixtime < 2147485547'
-
+        # TODO: using heuristic of expiration_time - 100 = tx time until there is a better way
+        # see: https://community.libra.org/t/fetch-previous-version-ledgerinfo-via-rpc/848/6
+        t_str = ' and expiration_unixtime >= ' + str(n + 100) + ' and expiration_unixtime < 2147485547'
+        # TODO: limiting the top of the counter means we're discounting TXs with high expriation time in stats - fix it
     else:
         t_str = ''
 
