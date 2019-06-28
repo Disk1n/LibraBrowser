@@ -142,7 +142,6 @@ def tx_db_worker(db_path='./tx_cache.db'):
 
                 # update counter to the latest version we inserted
                 cur_ver = res[-1]['version']
-
                 print('update to version:', cur_ver, 'success')
 
                 # Save (commit) the changes
@@ -150,6 +149,9 @@ def tx_db_worker(db_path='./tx_cache.db'):
 
                 # update latest version to next
                 cur_ver += 1
+
+                # sleep relative to amount of rows fetched so we don't get a 429 error
+                sleep(0.001 * num)
 
         except:
             print('Major error in tx_db_worker, details:', sys.exc_info())
