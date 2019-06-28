@@ -101,7 +101,11 @@ def tx_db_worker(db_path='./tx_cache.db'):
             print('transactions db worker starting')
 
             # create rpc connection
-            start_rpc_client_instance()
+            try:
+                start_rpc_client_instance()
+            except:
+                sleep(10)
+                start_rpc_client_instance()
 
             # connect to DB
             c, conn = connect_to_db(db_path)  # returns cursor object
