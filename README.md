@@ -1,5 +1,5 @@
 # LibraBrowser
-A browser for the Libra Blockchain TestNet. See: https://librabrowser.io
+A Block Explorer for the Libra Blockchain TestNet. See: https://librabrowser.io
 
 ## Features
 * [Account View](https://librabrowser.io/account/e945eec0f64069d4f171d394aa27881fabcbd3bb6bcc893162e60ad3d6c9feec) 
