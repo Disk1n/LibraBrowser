@@ -22,8 +22,8 @@ from datetime import datetime
 ###########
 # Globals #
 ###########
-SERVER_ADDRESS = 'ac.testnet.libra.org:8000'
-MINT_ACCOUNT = '0000000000000000000000000000000000000000000000000000000000000000'
+SERVER_ADDRESS = ''
+MINT_ACCOUNT = ''
 stub = None
 last_version_seen = 0
 
@@ -31,11 +31,16 @@ last_version_seen = 0
 #########
 # Funcs #
 #########
-def start_rpc_client_instance(server_address = SERVER_ADDRESS):
+def start_rpc_client_instance(rpc_server, mint_addr):
     global last_version_seen
     global stub
+    global SERVER_ADDRESS
+    global MINT_ACCOUNT
 
-    channel = grpc.insecure_channel(server_address)
+    SERVER_ADDRESS = rpc_server
+    MINT_ACCOUNT = mint_addr
+
+    channel = grpc.insecure_channel(SERVER_ADDRESS)
     stub = AdmissionControlStub(channel)
 
     last_version_seen = get_latest_version_from_ledger()

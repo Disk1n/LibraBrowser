@@ -15,7 +15,7 @@ from time import sleep
 #########
 # Funcs #
 #########
-def start_client_instance(client_path = ''):
+def start_client_instance(client_path = '', account_file = ''):
     c_path = os.path.expanduser(client_path + "target/debug/client")
     p = Popen([c_path, "--host", "ac.testnet.libra.org", "--port", "80",
                "-s", "./scripts/cli/trusted_peers.config.toml"], cwd=os.path.expanduser(client_path),
@@ -25,7 +25,7 @@ def start_client_instance(client_path = ''):
     print(os.read(p.stdout.fileno(), 10000))
 
     print('loading account')
-    print(do_cmd("a r ./test_acct", p = p))
+    print(do_cmd("a r " + account_file, p = p))
     sys.stdout.flush()
 
     return p

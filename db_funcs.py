@@ -94,17 +94,17 @@ def init_db(c):
             sys.exit()
 
 
-def tx_db_worker(db_path='./tx_cache.db'):
+def tx_db_worker(db_path, rpc_server, mint_addr):
     while True:
         try:
             print('transactions db worker starting')
 
             # create rpc connection
             try:
-                start_rpc_client_instance()
+                start_rpc_client_instance(rpc_server, mint_addr)
             except:
                 sleep(10)
-                start_rpc_client_instance()
+                start_rpc_client_instance(rpc_server, mint_addr)
 
             # connect to DB
             c, conn = connect_to_db(db_path)  # returns cursor object

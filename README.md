@@ -13,12 +13,19 @@ A browser for the Libra Blockchain TestNet. See: https://librabrowser.io
 
 ## Installation
 1. Install Libra per official instructions
-2. make sure the CLIENT_PATH variable is correct
-3. pip3 install grpcio grpcio-tools hexdump
+2. Run: pip3 install grpcio grpcio-tools hexdump
+3. Open the official client, create an account and save the account to disk (should be set in ACCOUNT_FILE setting)
+4. Edit config.json and make sure that settings match your environment (in particular CLIENT_PATH)
 
 ## Running the project
 At the root project folder execute the command:
 > python3 Browser.py
+
+Or to execute and leave it to run with output redirected to a file execute:
+> nohup python3 Browser.py &> browser.log < /dev/null &  
+> tail -f browser.log     #if you want to see the logs
+
+To use "DEVELOPMENT" mode settings set the environment variable "BROWSER=DEVELOPMENT" 
 
 ## Credits
 rpc support is based on: https://github.com/egorsmkv/libra-grpc-py 

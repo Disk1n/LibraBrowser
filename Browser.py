@@ -5,11 +5,14 @@
 ###########
 # Imports #
 ###########
-from time import sleep
 import re
 import sys
-from multiprocessing import Process
+import os
 import traceback
+import json
+
+from time import sleep
+from multiprocessing import Process
 
 from rpc_client import get_acct_raw, get_acct_info, start_rpc_client_instance
 from client import start_client_instance, do_cmd
@@ -28,8 +31,6 @@ app = Flask(__name__, static_url_path='')
 # Definitions #
 ###############
 ctr = 0   # counter of requests since last init
-DB_PATH = './tx_cache.db'  # path to the db we should load
-CLIENT_PATH = '~/libra/'   # root directory of Libra client
 c2 = None  # placeholder for connection object
 
 header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
@@ -109,7 +110,7 @@ def add_br_every64(s):
 @app.route('/')
 def index():
     update_counters()
-    c2, conn = connect_to_db(DB_PATH)
+    c2, conn = connect_to_db(config['DB_PATH'])
 
     bver = str(get_latest_version(c2))
 
@@ -120,7 +121,7 @@ def index():
 @app.route('/version/<ver>')
 def version(ver):
     update_counters()
-    c2, conn = connect_to_db(DB_PATH)
+    c2, conn = connect_to_db(config['DB_PATH'])
 
     bver = str(get_latest_version(c2))
 
@@ -158,7 +159,7 @@ def acct_details(acct):
     if not is_valid_account(acct):
         return invalid_account_template
 
-    c2, conn = connect_to_db(DB_PATH)
+    c2, conn = connect_to_db(config['DB_PATH'])
     bver = str(get_latest_version(c2))
 
     acct_state_raw = get_acct_raw(acct)
@@ -195,7 +196,7 @@ def search_redir():
 @app.route('/stats')
 def stats():
     update_counters()
-    c2, conn = connect_to_db(DB_PATH)
+    c2, conn = connect_to_db(config['DB_PATH'])
     try:
         # get stats
         stats_all_time = calc_stats(c2)
@@ -217,7 +218,7 @@ def stats():
 def faucet():
     update_counters()
 
-    c2, conn = connect_to_db(DB_PATH)
+    c2, conn = connect_to_db(config['DB_PATH'])
     bver = str(get_latest_version(c2))
 
     message = ''
@@ -255,13 +256,25 @@ def send_asset(path):
 # Main #
 ########
 if __name__ == '__main__':
-    tx_p = Process(target=tx_db_worker, args=(DB_PATH, ))
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+
+    try:
+        config = config[os.getenv("BROWSER")]
+    except:
+        config = config["PRODUCTION"]
+
+    print("system configuration:")
+    print(json.dumps(config, indent=4))
+
+    tx_p = Process(target=tx_db_worker, args=(config['DB_PATH'], config['RPC_SERVER'], config['MINT_ACCOUNT']))
     tx_p.start()
 
-    start_rpc_client_instance()
+    start_rpc_client_instance(config['RPC_SERVER'], config['MINT_ACCOUNT'])
 
-    p = start_client_instance(CLIENT_PATH)
+    p = start_client_instance(config['CLIENT_PATH'], config['ACCOUNT_FILE'])
 
     sleep(1)
 
-    app.run(port=5000, threaded=False, host='0.0.0.0', debug=False)
+    app.run(port=config['FLASK_PORT'], threaded=config['FLASK_THREADED'],
+            host=config['FLASK_HOST'], debug=config['FLASK_DEBUG'])
