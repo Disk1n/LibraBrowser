@@ -24,7 +24,11 @@ from stats import calc_stats
 # Flask init #
 ##############
 from flask import Flask, request, redirect, send_from_directory
+from flask_caching import Cache
+
+cache = Cache(config={'CACHE_TYPE': 'simple', 'CACHE_DEFAULT_TIMEOUT': 60})  # TODO: simple cache is not thread safe
 app = Flask(__name__, static_url_path='')
+cache.init_app(app)
 
 
 ###############
@@ -119,6 +123,7 @@ def index():
 
 
 @app.route('/version/<ver>')
+@cache.cached(timeout=3600)  # versions don't change so we can cache long-term
 def version(ver):
     update_counters()
     c2, conn = connect_to_db(config['DB_PATH'])
@@ -194,6 +199,7 @@ def search_redir():
 
 
 @app.route('/stats')
+@cache.cached(timeout=60)  # no point updating states more than once per minute
 def stats():
     update_counters()
     c2, conn = connect_to_db(config['DB_PATH'])
@@ -248,6 +254,7 @@ def faucet():
 
 
 @app.route('/assets/<path:path>')
+@cache.cached(timeout=3600)  # assets don't really change so can be cached for one hour
 def send_asset(path):
     return send_from_directory('assets', path)
 

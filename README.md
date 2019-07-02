@@ -13,7 +13,7 @@ A Block Explorer for the Libra Blockchain TestNet. See: https://librabrowser.io
 
 ## Installation
 1. Install Libra per official instructions
-2. Run: pip3 install grpcio grpcio-tools hexdump Flask 
+2. Run: pip3 install grpcio grpcio-tools hexdump Flask Flask-Caching
 3. Open the official client, create an account and save the account to disk (should be set in ACCOUNT_FILE setting)
 4. Edit config.json and make sure that settings match your environment (in particular CLIENT_PATH)
 
