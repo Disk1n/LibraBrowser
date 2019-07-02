@@ -1,0 +1,35 @@
+{
+  "PRODUCTION" : {
+    "DB_PATH" : "./tx_cache.db",
+    "CLIENT_PATH" : "~/libra/",
+    "ACCOUNT_FILE" : "./test_acct",
+    "RPC_SERVER" : "ac.testnet.libra.org:8000",
+    "MINT_ACCOUNT" : "0000000000000000000000000000000000000000000000000000000000000000",
+    "FLASK_HOST" : "0.0.0.0",
+    "FLASK_PORT" : "5000",
+    "FLASK_DEBUG" : false,
+    "FLASK_THREADED" : false
+  },
+  "DEVELOPMENT" : {
+    "DB_PATH" : "./tx_cache.db",
+    "CLIENT_PATH" : "~/Source/libra/",
+    "ACCOUNT_FILE" : "./test_acct",
+    "RPC_SERVER" : "ac.testnet.libra.org:8000",
+    "MINT_ACCOUNT" : "0000000000000000000000000000000000000000000000000000000000000000",
+    "FLASK_HOST" : "127.0.0.1",
+    "FLASK_PORT" : "5000",
+    "FLASK_DEBUG" : false,
+    "FLASK_THREADED" : false
+  },
+  "STAGING" : {
+    "DB_PATH" : "./tx_cache.db",
+    "CLIENT_PATH" : "~/libra/",
+    "ACCOUNT_FILE" : "./test_acct",
+    "RPC_SERVER" : "ac.testnet.libra.org:8000",
+    "MINT_ACCOUNT" : "0000000000000000000000000000000000000000000000000000000000000000",
+    "FLASK_HOST" : "0.0.0.0",
+    "FLASK_PORT" : "5001",
+    "FLASK_DEBUG" : false,
+    "FLASK_THREADED" : false
+  }
+}
