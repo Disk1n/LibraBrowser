@@ -27,6 +27,9 @@ Or to execute and leave it to run with output redirected to a file execute:
 
 To use "DEVELOPMENT" mode settings set the environment variable "BROWSER=DEVELOPMENT" 
 
+## Contributing
+[Please see Contributing.md](https://github.com/Disk1n/LibraBrowser/blob/master/CONTRIBUTING.md)
+
 ## Credits
 rpc support is based on: https://github.com/egorsmkv/libra-grpc-py  
 Contributors: [@gdbaldw](https://github.com/gdbaldw)  
