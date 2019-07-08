@@ -1,12 +1,17 @@
 # Library to automate Libra client
 
+##########
+# Logger #
+##########
+import logging
+logger = logging.getLogger(__name__)
+
 ###########
 # Imports #
 ###########
 import os
 import re
 import sys
-import traceback
 from datetime import datetime
 from subprocess import Popen, PIPE
 from time import sleep
@@ -17,15 +22,15 @@ from time import sleep
 #########
 def start_client_instance(client_path = '', account_file = ''):
     c_path = os.path.expanduser(client_path + "target/debug/client")
-    p = Popen([c_path, "--host", "ac.testnet.libra.org", "--port", "80",
-               "-s", "./scripts/cli/trusted_peers.config.toml"], cwd=os.path.expanduser(client_path),
+    args = [c_path, "--host", "ac.testnet.libra.org", "--port", "80",
+        "-s", "./scripts/cli/trusted_peers.config.toml"]
+    logger.info(' '.join(args))
+    p = Popen(args, cwd=os.path.expanduser(client_path),
               shell=False, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True, bufsize=0, universal_newlines=True)
     sleep(5)
     p.stdout.flush()
-    print(os.read(p.stdout.fileno(), 10000))
-
-    print('loading account')
-    print(do_cmd("a r " + account_file, p = p))
+    logger.info(os.read(p.stdout.fileno(), 10000).decode('unicode_escape'))
+    logger.info('loading account {}: {}'.format(account_file, do_cmd("a r " + account_file, p = p)))
     sys.stdout.flush()
 
     return p
@@ -54,8 +59,7 @@ def get_acct_info(raw_account_status):
         sent_events = next(re.finditer(r'sent_events_count: (\d+),', raw_account_status)).group(1)
         recv_events = next(re.finditer(r'received_events_count: (\d+),', raw_account_status)).group(1)
     except:
-        print(sys.exc_info())
-        traceback.print_exception(*sys.exc_info())
+        logger.exception('Error in getting account info')
 
     return account, balance, sq_num, sent_events, recv_events
 

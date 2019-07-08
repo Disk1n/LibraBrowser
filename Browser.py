@@ -2,14 +2,21 @@
 # -*- coding: utf-8 -*-
 # execute in production with: nohup python3 Browser.py &> browser.log < /dev/null &
 
+################
+# Logging init #
+################
+import json
+from logging.config import dictConfig
+
+with open('logging.json', 'r') as f:
+    dictConfig( json.load(f) )
+
 ###########
 # Imports #
 ###########
 import re
 import sys
 import os
-import traceback
-import json
 
 from time import sleep
 from multiprocessing import Process
@@ -71,13 +78,13 @@ invalid_account_template = header + '<h1>Invalid Account format!<h1></body></htm
 def update_counters():
     global ctr
     ctr += 1
-    print('counter:', ctr)
+    app.logger.info('counter: {}'.format(ctr))
     sys.stdout.flush()
 
 
 def is_valid_account(acct):
     if (not re.match("^[A-Za-z0-9]*$", acct)) or (len(acct) != 64):
-        print("invalid Account:", acct)
+        app.logger.info("invalid Account: {}".format(acct))
         return False
     return True
 
@@ -154,7 +161,7 @@ def version(ver):
 
 @app.route('/account/<acct>')
 def acct_details(acct):
-    print(acct)
+    app.logger.info('Account: {}'.format(acct))
     update_counters()
     try:
         page = int(request.args.get('page'))
@@ -169,7 +176,7 @@ def acct_details(acct):
 
     acct_state_raw = get_acct_raw(acct)
     acct_info = get_acct_info(acct_state_raw)
-    print('acct_info', acct_info)
+    app.logger.info('acct_info: {}'.format(acct_info))
 
     try:
         tx_list = get_all_account_tx(c2, acct, page)
@@ -177,9 +184,7 @@ def acct_details(acct):
         for tx in tx_list:
             tx_tbl += gen_tx_table_row(tx)
     except:
-        print(sys.exc_info())
-        traceback.print_exception(*sys.exc_info())
-        print('error in building table')
+        app.logger.exception('error in building table')
 
     next_page = "/account/" + acct + "?page=" + str(page + 1)
 
@@ -191,10 +196,10 @@ def acct_details(acct):
 def search_redir():
     tgt = request.args.get('acct')
     if len(tgt) == 64:
-        print('redir to account', tgt)
+        app.logger.info('redir to account: {}'.format(tgt))
         return redirect('/account/'+tgt)
     else:
-        print('redir to tx', tgt)
+        app.logger.info('redir to tx: {}'.format(tgt))
         return redirect('/version/'+tgt)
 
 
@@ -211,9 +216,7 @@ def stats():
 
         ret = stats_template.format(*stats_all_time, *stats_24_hours, *stats_one_hour)
     except:
-        print(sys.exc_info())
-        traceback.print_exception(*sys.exc_info())
-        print('error in stats')
+        app.logger.exception('error in stats')
 
     conn.close()
 
@@ -231,9 +234,9 @@ def faucet():
     if request.method == 'POST':
         try:
             acct = request.form.get('acct')
-            print(acct)
+            app.logger.info('acct: {}'.format(acct))
             amount = request.form.get('amount')
-            print(amount)
+            app.logger.info('amount: {}'.format(amount))
             if float(amount) < 0:
                 message = 'Amount must be >= 0'
             elif not is_valid_account(acct):
@@ -244,8 +247,8 @@ def faucet():
                 acct_link = '<a href="/account/{0}">{0}</a>'.format(acct)
                 message = 'Sent ' + amount + ' <small>Libra</small> to ' + acct_link
         except:
-            traceback.print_exception(*sys.exc_info())
             message = 'Invalid request logged!'
+            app.logger.exception(message)
 
         if message:
             message = faucet_alert_template.format(message)
@@ -271,8 +274,7 @@ if __name__ == '__main__':
     except:
         config = config["PRODUCTION"]
 
-    print("system configuration:")
-    print(json.dumps(config, indent=4))
+    app.logger.info("system configuration: {}".format(json.dumps(config, indent=4)))
 
     tx_p = Process(target=tx_db_worker, args=(config['DB_PATH'], config['RPC_SERVER'], config['MINT_ACCOUNT']))
     tx_p.start()

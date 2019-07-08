@@ -1,11 +1,16 @@
 # All DB manipulation functions + DB worker code
 
+##########
+# Logger #
+##########
+import logging
+logger = logging.getLogger(__name__)
+
 ###########
 # Imports #
 ###########
 import sqlite3
 import sys
-import traceback
 from time import sleep
 
 import struct
@@ -27,9 +32,7 @@ def get_latest_version(c):
         c.execute("SELECT MAX(version) FROM transactions")
         cur_ver = int(c.fetchall()[0][0])
     except:
-        print(sys.exc_info())
-        traceback.print_exception(*sys.exc_info())
-        print("couldn't find any records setting current version to 0")
+        logger.exception("couldn't find any records; setting current version to 0")
         cur_ver = 0
     if not type(cur_ver) is int:
         cur_ver = 0
@@ -50,7 +53,7 @@ def get_tx_from_db_by_version(ver, c):
     try:
         ver = int(ver)   # safety
     except:
-        print('potential attempt to inject:', ver)
+        logger.info('potential attempt to inject: {}'.format(ver))
         ver = 1
 
     c.execute("SELECT * FROM transactions WHERE version = " + str(ver))
@@ -58,7 +61,7 @@ def get_tx_from_db_by_version(ver, c):
     res = [parse_db_row(row) for row in res]
 
     if len(res) > 1:
-        print('possible duplicates detected in db, record version:', ver)
+        logger.info('possible duplicates detected in db, record version: {}'.format(ver))
 
     return res[0]
 
@@ -82,7 +85,7 @@ def init_db(c):
                              expiration_unixtime INTEGER, gas_used text, sender_sig text, signed_tx_hash text,
                              state_root_hash text, event_root_hash text, code_hex text, program text)''')
     except:
-        print('reusing existing db')
+        logger.info('reusing existing db')
 
         # Test DB version
         c.execute("SELECT * FROM transactions where version = 1")
@@ -90,14 +93,14 @@ def init_db(c):
         if tmp is None:
             pass
         elif len(tmp) != 18:
-            print("DB version mismatch! please delete the old db and allow the system to repopulate")
+            logger.critical("DB version mismatch! please delete the old db and allow the system to repopulate")
             sys.exit()
 
 
 def tx_db_worker(db_path, rpc_server, mint_addr):
     while True:
         try:
-            print('transactions db worker starting')
+            logger.info('transactions db worker starting')
 
             # create rpc connection
             try:
@@ -113,7 +116,7 @@ def tx_db_worker(db_path, rpc_server, mint_addr):
             # get latest version in the db
             cur_ver = get_latest_version(c)
             cur_ver += 1  # TODO: later handle genesis
-            print('starting update at version', cur_ver)
+            logger.info('starting update at version {}'.format(cur_ver))
 
             # start the main loop
             while True:
@@ -142,7 +145,7 @@ def tx_db_worker(db_path, rpc_server, mint_addr):
 
                 # update counter to the latest version we inserted
                 cur_ver = res[-1]['version']
-                print('update to version:', cur_ver, 'success')
+                logger.debug('update to version: {} - success'.format(cur_ver))
 
                 # Save (commit) the changes
                 conn.commit()
@@ -154,7 +157,6 @@ def tx_db_worker(db_path, rpc_server, mint_addr):
                 sleep(0.001 * num)
 
         except:
-            print('Major error in tx_db_worker, details:', sys.exc_info())
-            traceback.print_exception(*sys.exc_info())
+            logger.exception('Major error in tx_db_worker')
             sleep(2)
-            print('restarting tx_db_worker')
+            logger.info('restarting tx_db_worker')

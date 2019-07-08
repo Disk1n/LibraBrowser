@@ -1,6 +1,12 @@
 # Library to fetch information from Libra via rpc
 # based on https://github.com/egorsmkv/libra-grpc-py/
 
+##########
+# Logger #
+##########
+import logging
+logger = logging.getLogger(__name__)
+
 ###########
 # Imports #
 ###########
@@ -15,7 +21,6 @@ import struct
 from hexdump import hexdump
 
 import sys
-import traceback
 from datetime import datetime
 
 
@@ -57,7 +62,7 @@ def get_latest_version_from_ledger():
     ledger_info = response.ledger_info_with_sigs.ledger_info
 
     last_version_seen = ledger_info.version
-    print('last version seen:', last_version_seen)
+    logger.debug('last version seen: {}'.format(last_version_seen))
     return last_version_seen
 
 
@@ -85,8 +90,7 @@ def get_acct_info(state):
         sent_events = acct_state[3]
         sq_num = acct_state[4]
     except:
-        print(sys.exc_info())
-        traceback.print_exception(*sys.exc_info())
+        logger.exception()
 
     return account, balance, sq_num, sent_events, recv_events
 
@@ -98,7 +102,6 @@ def get_raw_tx_lst(version, limit):
     tx_req = GetTransactionsRequest(start_version=version, limit=limit, fetch_events=True)
     item = RequestItem(get_transactions_request=tx_req)
     request = UpdateToLatestLedgerRequest(client_known_version=last_version_seen, requested_items=[item])
-    # print(request)
     response = stub.UpdateToLatestLedger(request)
 
     infos = response.response_items[0].get_transactions_response.txn_list_with_proof.infos
