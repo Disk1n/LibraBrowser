@@ -121,25 +121,22 @@ def parse_raw_tx_lst(struct_lst, infos, raw, events):
     cur_ver = raw.first_transaction_version.value
     res = []
 
-    for x in zip(infos, struct_lst, raw.transactions): #, events):
-        info = x[0]
-        tx = x[1]
-        r = x[2]
+    for (info, tx, r) in zip(infos, struct_lst, raw.transactions): #, events):
         tmp = dict()
 
         tmp['version'] = cur_ver
         cur_ver += 1
 
-        tmp['expiration'] = str(datetime.fromtimestamp(min(tx.expiration_time, 2147485547)))
-        tmp['sender'] = bytes.hex(tx.sender_account)
-        tmp['target'] = bytes.hex(tx.program.arguments[0].data)
-        tmp['t_type'] = 'peer_to_peer_transaction' if tmp['sender'] != MINT_ACCOUNT else 'mint_transaction'
+        tmp['expiration_date'] = str(datetime.fromtimestamp(min(tx.expiration_time, 2147485547)))
+        tmp['src'] = bytes.hex(tx.sender_account)
+        tmp['dest'] = bytes.hex(tx.program.arguments[0].data)
+        tmp['type'] = 'peer_to_peer_transaction' if tmp['src'] != MINT_ACCOUNT else 'mint_transaction'
         tmp['amount'] = tx.program.arguments[1].data
         tmp['gas_price'] = struct.pack("<Q", tx.gas_unit_price)
-        tmp['gas_max'] = struct.pack("<Q", tx.max_gas_amount)
+        tmp['max_gas'] = struct.pack("<Q", tx.max_gas_amount)
         tmp['sq_num'] = tx.sequence_number
-        tmp['pubkey'] = bytes.hex(r.sender_public_key)
-        tmp['expiration_num'] = min(tx.expiration_time, 2**63 - 1)
+        tmp['pub_key'] = bytes.hex(r.sender_public_key)
+        tmp['expiration_unixtime'] = min(tx.expiration_time, 2**63 - 1)
 
         tmp['gas_used'] = struct.pack("<Q", info.gas_used)
 
@@ -147,7 +144,7 @@ def parse_raw_tx_lst(struct_lst, infos, raw, events):
         tmp['signed_tx_hash'] = bytes.hex(info.signed_transaction_hash)
         tmp['state_root_hash'] = bytes.hex(info.state_root_hash)
         tmp['event_root_hash'] = bytes.hex(info.event_root_hash)
-        tmp['code'] = hexdump(tx.program.code, result='return')
+        tmp['code_hex'] = hexdump(tx.program.code, result='return')
         tmp['program'] = str(tx.program)
         #tmp['events'] = events
 

@@ -19,11 +19,10 @@ import sys
 import os
 
 from time import sleep
-from multiprocessing import Process
 
 from rpc_client import get_acct_raw, get_acct_info, start_rpc_client_instance
 from client import start_client_instance, do_cmd
-from db_funcs import connect_to_db, get_latest_version, get_tx_from_db_by_version, get_all_account_tx, tx_db_worker
+from db_funcs import get_latest_version, get_tx_from_db_by_version, get_all_account_tx, TxDBWorker
 from stats import calc_stats
 
 
@@ -42,7 +41,6 @@ cache.init_app(app)
 # Definitions #
 ###############
 ctr = 0   # counter of requests since last init
-c2 = None  # placeholder for connection object
 
 header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
               <body><h3>Experimental Libra testnet explorer by <a href="https://twitter.com/gal_diskin">@gal_diskin</a> 
@@ -121,11 +119,7 @@ def add_br_every64(s):
 @app.route('/')
 def index():
     update_counters()
-    c2, conn = connect_to_db(config['DB_PATH'])
-
-    bver = str(get_latest_version(c2))
-
-    conn.close()
+    bver = str(get_latest_version())
     return index_template.format(bver)
 
 
@@ -133,15 +127,13 @@ def index():
 @cache.cached(timeout=3600)  # versions don't change so we can cache long-term
 def version(ver):
     update_counters()
-    c2, conn = connect_to_db(config['DB_PATH'])
 
-    bver = str(get_latest_version(c2))
+    bver = str(get_latest_version())
 
     try:
         ver = int(ver)
-        tx = get_tx_from_db_by_version(ver, c2)
+        tx = get_tx_from_db_by_version(ver)
     except:
-        conn.close()
         return version_error_template
 
     # for toggle raw view
@@ -155,7 +147,6 @@ def version(ver):
         extra = ''
         not_raw = '1'
 
-    conn.close()
     return version_template.format(bver, *tx, add_br_every64(tx[12]), extra, not_raw, tx[-2].replace('<', '&lt;'))
 
 
@@ -171,15 +162,14 @@ def acct_details(acct):
     if not is_valid_account(acct):
         return invalid_account_template
 
-    c2, conn = connect_to_db(config['DB_PATH'])
-    bver = str(get_latest_version(c2))
+    bver = str(get_latest_version())
 
     acct_state_raw = get_acct_raw(acct)
     acct_info = get_acct_info(acct_state_raw)
     app.logger.info('acct_info: {}'.format(acct_info))
 
     try:
-        tx_list = get_all_account_tx(c2, acct, page)
+        tx_list = get_all_account_tx(acct, page)
         tx_tbl = ''
         for tx in tx_list:
             tx_tbl += gen_tx_table_row(tx)
@@ -188,7 +178,6 @@ def acct_details(acct):
 
     next_page = "/account/" + acct + "?page=" + str(page + 1)
 
-    conn.close()
     return account_template.format(bver, *acct_info, tx_tbl, next_page)
 
 
@@ -207,28 +196,22 @@ def search_redir():
 @cache.cached(timeout=60)  # no point updating states more than once per minute
 def stats():
     update_counters()
-    c2, conn = connect_to_db(config['DB_PATH'])
     try:
         # get stats
-        stats_all_time = calc_stats(c2)
-        stats_24_hours = calc_stats(c2, limit = 3600 * 24)[5:]
-        stats_one_hour = calc_stats(c2, limit = 3600)[5:]
+        stats_all_time = calc_stats()
+        stats_24_hours = calc_stats(limit = 3600 * 24)[5:]
+        stats_one_hour = calc_stats(limit = 3600)[5:]
 
         ret = stats_template.format(*stats_all_time, *stats_24_hours, *stats_one_hour)
     except:
         app.logger.exception('error in stats')
-
-    conn.close()
-
     return ret
-
 
 @app.route('/faucet', methods=['GET', 'POST'])
 def faucet():
     update_counters()
 
-    c2, conn = connect_to_db(config['DB_PATH'])
-    bver = str(get_latest_version(c2))
+    bver = str(get_latest_version())
 
     message = ''
     if request.method == 'POST':
@@ -276,12 +259,11 @@ if __name__ == '__main__':
 
     app.logger.info("system configuration: {}".format(json.dumps(config, indent=4)))
 
-    tx_p = Process(target=tx_db_worker, args=(config['DB_PATH'], config['RPC_SERVER'], config['MINT_ACCOUNT']))
-    tx_p.start()
+    TxDBWorker(config['DB_PATH'], config['RPC_SERVER'], config['MINT_ACCOUNT']).start()
 
     start_rpc_client_instance(config['RPC_SERVER'], config['MINT_ACCOUNT'])
 
-    p = start_client_instance(config['CLIENT_PATH'], config['ACCOUNT_FILE'])
+    start_client_instance(config['CLIENT_PATH'], config['ACCOUNT_FILE'])
 
     sleep(1)
 
