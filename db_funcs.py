@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 ###########
 # Imports #
 ###########
-from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, select, desc, func
+from sqlalchemy import create_engine, engine_from_config, Table, Column, Integer, BigInteger, LargeBinary, String, MetaData, select, desc, func
 from sqlalchemy.pool import StaticPool
 from threading import Thread
 import sys
 from time import sleep
-
+import json
 import struct
 
 from rpc_client import get_latest_version_from_ledger, get_raw_tx_lst, parse_raw_tx_lst, start_rpc_client_instance
@@ -30,13 +30,13 @@ txs = Table('transactions', metadata,
     Column('src', String),
     Column('dest', String),
     Column('type', String),
-    Column('amount', String),
-    Column('gas_price', String),
-    Column('max_gas', String),
+    Column('amount', LargeBinary),
+    Column('gas_price', LargeBinary),
+    Column('max_gas', LargeBinary),
     Column('sq_num', Integer),
     Column('pub_key', String),
-    Column('expiration_unixtime', Integer),
-    Column('gas_used', String),
+    Column('expiration_unixtime', BigInteger),
+    Column('gas_used', LargeBinary),
     Column('sender_sig', String),
     Column('signed_tx_hash', String),
     Column('state_root_hash', String),
@@ -44,12 +44,23 @@ txs = Table('transactions', metadata,
     Column('code_hex', String),
     Column('program', String),
 )
-engine = create_engine(
-    'sqlite://',
-    connect_args={'check_same_thread': False},
-    poolclass = StaticPool,
-    echo=False
-)
+
+with open('config.json', 'r') as f:
+    config = json.load(f)
+try:
+    config = config[os.getenv("BROWSER")]
+except:
+    config = config["PRODUCTION"]
+
+if 'sqlalchemy.url' in config:
+    engine = create_engine(config['sqlalchemy.url'])
+else:
+    engine = create_engine(
+        'sqlite://',
+        connect_args={'check_same_thread': False},
+        poolclass = StaticPool,
+    )
+
 metadata.create_all(engine)
 
 #########

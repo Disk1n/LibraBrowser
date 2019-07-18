@@ -84,12 +84,12 @@ def calc_stats(limit = None):
         return engine.execute(
             s_limit(
                 select(
-                    [acct]
+                    [func.count(acct.distinct())]
                 ).where(
                     txs.c.version > 0
-                ).distinct()
-            ).count()
-        ).fetchone()[0]
+                )
+            )
+        ).scalar()
     count_dest = get_acct_cnt(txs.c.dest)
     count_src = get_acct_cnt(txs.c.src)
 
