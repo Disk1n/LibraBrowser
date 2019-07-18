@@ -207,6 +207,7 @@ def stats():
         app.logger.exception('error in stats')
     return ret
 
+
 @app.route('/faucet', methods=['GET', 'POST'])
 def faucet():
     update_counters()
@@ -259,11 +260,13 @@ if __name__ == '__main__':
 
     app.logger.info("system configuration: {}".format(json.dumps(config, indent=4)))
 
+    if not 'DB_PATH' in config.keys():
+        config['DB_PATH'] = './fake.db'
     TxDBWorker(config['DB_PATH'], config['RPC_SERVER'], config['MINT_ACCOUNT']).start()
 
     start_rpc_client_instance(config['RPC_SERVER'], config['MINT_ACCOUNT'])
 
-    start_client_instance(config['CLIENT_PATH'], config['ACCOUNT_FILE'])
+    p = start_client_instance(config['CLIENT_PATH'], config['ACCOUNT_FILE'])
 
     sleep(1)
 
