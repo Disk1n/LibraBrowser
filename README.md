@@ -13,7 +13,7 @@ A Block Explorer for the Libra Blockchain TestNet. See: https://librabrowser.io
 
 ## Installation
 1. Install Libra per official instructions
-2. Run: pip3 install grpcio grpcio-tools hexdump Flask Flask-Caching
+2. Run: pip3 install grpcio grpcio-tools hexdump Flask Flask-Caching sqlalchemy psycopg2
 3. Open the official client, create an account and save the account to disk (should be set in ACCOUNT_FILE setting)
 4. Edit config.json and make sure that settings match your environment (in particular CLIENT_PATH and sqlalchemy.url)
 
@@ -25,6 +25,9 @@ A Block Explorer for the Libra Blockchain TestNet. See: https://librabrowser.io
     * port = 5432
     * database name = libra_browser
     * Please see [SQLAlchemy Docs](https://docs.sqlalchemy.org/en/13/core/engines.html) for configuration options
+* make sure that /etc/postgresql/<PGSQL_VERSION>/main/pg_hba.conf has the configuration of password, i.e. auth method md5 and not peer:
+> local   all             postgres                                md5
+* To create the DB after installing postgresql you can run: sudo -u postgres createdb libra_browser
 * Alternatively, delete from config.json the lines containing "sqlalchemy.url", for a simple default sqlite database in memory
 
 ## Running the project
