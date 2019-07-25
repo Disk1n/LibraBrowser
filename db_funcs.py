@@ -11,20 +11,21 @@ logger = logging.getLogger(__name__)
 ###########
 from sqlalchemy import create_engine, engine_from_config, Table, Column, Integer, BigInteger, LargeBinary, String, MetaData, select, desc, func
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.serializer import dumps
 from threading import Thread
 import sys
-from time import sleep
+from time import sleep, gmtime, strftime
 import json
 import struct
+import gzip
 
 from rpc_client import get_latest_version_from_ledger, get_raw_tx_lst, parse_raw_tx_lst, start_rpc_client_instance
 
-############
-# Database #
-############
+#############
+# Constants #
+#############
 
-metadata = MetaData()
-txs = Table('transactions', metadata,
+columns = (
     Column('version', Integer, primary_key=True),
     Column('expiration_date', String),
     Column('src', String),
@@ -44,30 +45,23 @@ txs = Table('transactions', metadata,
     Column('code_hex', String),
     Column('program', String),
 )
+metadata = MetaData()
+txs = Table('transactions', metadata, *columns)
 
-with open('config.json', 'r') as f:
-    config = json.load(f)
-try:
-    config = config[os.getenv("BROWSER")]
-except:
-    config = config["PRODUCTION"]
+###########
+# Globals #
+###########
 
-if 'sqlalchemy.url' in config:
-    engine = create_engine(config['sqlalchemy.url'])
-else:
-    engine = create_engine(
-        'sqlite://',
-        connect_args={'check_same_thread': False},
-        poolclass = StaticPool,
-    )
-
-metadata.create_all(engine)
+engine = None
 
 #########
 # Funcs #
 #########
 
+unpack = lambda x: struct.unpack('<Q', x)[0] / 1000000
+
 def get_latest_version():
+    global engine
     cur_ver = engine.execute(select([func.max(txs.c.version)])).scalar()
     if cur_ver is None:
         logger.info("couldn't find any records; setting current version to 0")
@@ -75,9 +69,10 @@ def get_latest_version():
     return cur_ver
 
 def parse_db_row(row):
-    return [struct.unpack('<Q', r)[0] / 1000000 if i in (5,6,7,11) else r for i, r in enumerate(row)]
+    return [unpack(r) if i in (5,6,7,11) else r for i, r in enumerate(row)]
 
 def get_tx_from_db_by_version(ver):
+    global engine
     try:
         ver = int(ver)   # safety
     except:
@@ -90,6 +85,7 @@ def get_tx_from_db_by_version(ver):
     return res
 
 def get_all_account_tx(acct, page):
+    global engine
     return map(
         parse_db_row,
         engine.execute(
@@ -99,25 +95,68 @@ def get_all_account_tx(acct, page):
         )
     )
 
+def get_first_version(s_limit):
+    global engine
+    return engine.execute(
+        s_limit(
+            select(
+                [func.min(txs.c.version)]
+            ).where(
+                txs.c.version > 0
+            )
+        )
+    ).scalar()
+
+def get_tx_cnt_sum(whereclause, s_limit):
+    global engine
+    selected = engine.execute(
+        s_limit(
+            select(
+                [txs.c.amount]
+            ).where(
+                whereclause
+            ).distinct(txs.c.version)
+        )
+    ).fetchall()
+    return len(selected), sum(map(lambda r: unpack(r['amount']), selected))
+
+def get_acct_cnt(acct, s_limit):
+    global engine
+    return engine.execute(
+        s_limit(
+            select(
+                [func.count(acct.distinct())]
+            ).where(
+                txs.c.version > 0
+            )
+        )
+    ).scalar()
+
+
 #############
 # DB Worker #
 #############
 
 class TxDBWorker(Thread):
-    def __init__(self, db_path, rpc_server, mint_addr):
+    def __init__(self, config):
         Thread.__init__(self)
-        self.db_path = db_path
-        started = False
-        logger.info('transactions db worker starting')
-        while not started:
+        self.url = "{DB_DIALECT}+{DB_DRIVER}://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}".format(**config)
+        logger.info('sqlalchemy.url: {}'.format(self.url))
+        self.db_backup_path = config['DB_BACKUP_PATH']
+        running = False
+        while not running:
             try:
-                start_rpc_client_instance(rpc_server, mint_addr)
-                started = True
+                start_rpc_client_instance(config['RPC_SERVER'], config['MINT_ACCOUNT'])
+                running = True
             except:
                 sleep(10)
 
     def run(self):
+        global engine
         while True:
+            logger.info('transactions db worker starting')
+            engine = create_engine(self.url)
+            metadata.create_all(engine)
             try:
                 # get latest version in the db
                 cur_ver = get_latest_version()
@@ -131,8 +170,16 @@ class TxDBWorker(Thread):
                         sleep(1)
                         continue
                     if cur_ver > bver:
-                        sleep(1)
-                        continue
+                        if cur_ver > bver + 50: # for safety due to typical blockchain behavior
+                            sleep(1)
+                            continue
+                        file_path = '{}_{}.gz'.format(self.db_backup_path, strftime('%Y%m%d%H%M%S'))
+                        logger.info('saving database to {}'.format(file_path))
+                        with gzip.open(file_path, 'wb') as f:
+                            f.write(dumps(engine.execute(select([txs])).fetchall()))
+                        metadata.drop_all(engine)
+                        metadata.create_all(engine)
+                        break
 
                     # batch update
                     num = min(1000, bver - cur_ver)  # at most 5000 records at once
@@ -140,7 +187,7 @@ class TxDBWorker(Thread):
 
                     # read records
                     res = parse_raw_tx_lst(*tx_data)
-                    if len(res) == 0:
+                    if not res:
                         sleep(5)
                         continue
 
@@ -160,4 +207,3 @@ class TxDBWorker(Thread):
             except:
                 logger.exception('Major error in tx_db_worker')
                 sleep(2)
-                logger.info('restarting tx_db_worker')
