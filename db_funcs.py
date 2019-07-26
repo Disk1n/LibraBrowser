@@ -169,10 +169,7 @@ class TxDBWorker(Thread):
                     except:
                         sleep(1)
                         continue
-                    if cur_ver > bver:
-                        if cur_ver > bver + 50: # for safety due to typical blockchain behavior
-                            sleep(1)
-                            continue
+                    if cur_ver > bver + 50: # for safety due to typical blockchain behavior
                         file_path = '{}_{}.gz'.format(self.db_backup_path, strftime('%Y%m%d%H%M%S'))
                         logger.info('saving database to {}'.format(file_path))
                         with gzip.open(file_path, 'wb') as f:
