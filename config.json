@@ -32,7 +32,7 @@
     "DB_PASSWORD" : "postgres",
     "DB_HOST" : "localhost",
     "DB_PORT" : 5432,
-    "DB_NAME" : "libra_browser",
+    "DB_NAME" : "libra_browser_development",
     "DB_BACKUP_PATH" : "./db_backup"
   },
   "STAGING" : {
@@ -50,7 +50,7 @@
     "DB_PASSWORD" : "postgres",
     "DB_HOST" : "localhost",
     "DB_PORT" : 5432,
-    "DB_NAME" : "libra_browser",
+    "DB_NAME" : "libra_browser_staging",
     "DB_BACKUP_PATH" : "./db_backup"
   }
 }

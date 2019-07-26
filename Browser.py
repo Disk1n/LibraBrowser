@@ -42,32 +42,25 @@ cache.init_app(app)
 ###############
 ctr = 0   # counter of requests since last init
 
-header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
-              <body><h3>Experimental Libra testnet explorer by <a href="https://twitter.com/gal_diskin">@gal_diskin</a> 
-              special thanks to Daniel Prinz for his help</h3>
-              <h3>Courtesy of <a href="https://www.firstdag.com">First Group</a></h3>
-              I developed this to make testing easier. I have no patiance ATM to make it pretty / faster / more stable. 
-              I might continue to develop this if I see it has value to others...
-              If you liked this feel free to  let me know and send me some tokens on the testnet at: 
-              <a href='/account/e945eec0f64069d4f171d394aa27881fabcbd3bb6bcc893162e60ad3d6c9feec'>
-              e945eec0f64069d4f171d394aa27881fabcbd3bb6bcc893162e60ad3d6c9feec</a>
-'''
+with open('templates/index.tmpl.html', 'r', encoding='utf-8') as f:
+    index_template = f.read()
 
-index_template = open('index.html.tmpl', 'r', encoding='utf-8').read()
+with open('templates/version.tmpl.html', 'r', encoding='utf-8') as f:
+    version_template = f.read()
 
-version_template = open('version.html.tmpl', 'r', encoding='utf-8').read()
+with open('templates/forbidden.tmpl.html', 'r', encoding='utf-8') as f:
+    forbidden_template = f.read()
 
-version_error_template = header + "<h1>Couldn't read version details!<h1></body></html>"
+with open('templates/stats.tmpl.html', 'r', encoding='utf-8') as f:
+    stats_template = f.read()
 
-stats_template = open('stats.html.tmpl', 'r', encoding='utf-8').read()
+with open('templates/account.tmpl.html', 'r', encoding='utf-8') as f:
+    account_template = f.read()
 
-account_template = open('account.html.tmpl', 'r', encoding='utf-8').read()
-
-faucet_template = open('faucet.html.tmpl', 'r', encoding='utf-8').read()
+with open('templates/faucet.tmpl.html', 'r', encoding='utf-8') as f:
+    faucet_template = f.read()
 
 faucet_alert_template = '<div class="text-center"><div class="alert alert-danger" role="alert"><p>{0}</p></div></div>'
-
-invalid_account_template = header + '<h1>Invalid Account format!<h1></body></html>'
 
 
 ################
@@ -113,6 +106,14 @@ def add_br_every64(s):
     return res
 
 
+def gen_error_page(ver = None):
+    try:
+        error = forbidden_template.format(ver)
+    except:
+        error = forbidden_template.format('???')
+    return error
+
+
 ##########
 # Routes #
 ##########
@@ -134,7 +135,7 @@ def version(ver):
         ver = int(ver)
         tx = get_tx_from_db_by_version(ver)
     except:
-        return version_error_template
+        return gen_error_page(bver), 404
 
     # for toggle raw view
     if request.args.get('raw') == '1':
@@ -154,15 +155,16 @@ def version(ver):
 def acct_details(acct):
     app.logger.info('Account: {}'.format(acct))
     update_counters()
+    bver = str(get_latest_version())
+
     try:
         page = int(request.args.get('page'))
     except:
         page = 0
 
     if not is_valid_account(acct):
-        return invalid_account_template
+        return gen_error_page(bver), 404
 
-    bver = str(get_latest_version())
 
     acct_state_raw = get_acct_raw(acct)
     acct_info = get_acct_info(acct_state_raw)
@@ -175,6 +177,7 @@ def acct_details(acct):
             tx_tbl += gen_tx_table_row(tx)
     except:
         app.logger.exception('error in building table')
+        return gen_error_page(bver), 404
 
     next_page = "/account/" + acct + "?page=" + str(page + 1)
 
@@ -205,6 +208,12 @@ def stats():
         ret = stats_template.format(*stats_all_time, *stats_24_hours, *stats_one_hour)
     except:
         app.logger.exception('error in stats')
+        try:
+            bver = stats_all_time[0]
+        except:
+            bver = None
+        return gen_error_page(bver), 404
+
     return ret
 
 
