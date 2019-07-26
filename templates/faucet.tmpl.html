@@ -13,7 +13,7 @@
 	<!-- end analytics -->
 
 	<!-- open graph / link previews -->
-	<meta property="og:title" content="Libra Testnet Explorer - Version Details" />
+	<meta property="og:title" content="Libra Testnet Explorer - Faucet" />
 	<meta property="og:type" content="text/html" />
 	<meta property="og:image" content="/assets/images/logos/transparent-logo.png" />
 	<meta property="og:image:width" content="445" />
@@ -22,7 +22,7 @@
 	<meta charset="UTF-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Experimental Libra Testnet Explorer - Transaction Details</title>
+	<title>Experimental Libra Testnet Explorer - Faucet</title>
 	<meta name="description" content="Experimental Libra TestNet Explorer by @gal_diskin" />
 	<meta name="keywords" content="Libra, libracoin, libra coin, facebook coin, calibra" />
 	<meta name="author" content="Gal Diskin, Daniel Prinz, First Group"/>
@@ -110,95 +110,40 @@
 		</div>	
 	</section>
 	<!-- ***** Welcome Area End ***** -->
+
 	<section class="block-explorer-section section bg-bottom">
 		<div class="container">
 			<div class="row">
 				<div class="col-lg-12">
 					<div class="center-heading">
-						<h2 class="section-title">Details for Version / Transaction</h2>
+						<h2 class="section-title">Faucet</h2>
+						<small>(UI to be improved later)</small>
 					</div>
 				</div>
 			</div>
-			<div class="row">
-				<div class="col-lg-12 col-md-12 col-sm-12">
-					<div class="table-responsive">
-						<table class="table table-striped table-latests table-detail">
-							<tbody>
-								<tr>
-									<td><strong>Version</strong></td>
-									<td>{1}</td>
-								</tr>
-								<tr>
-									<td><strong>Expiration Time</strong></td>
-									<td>{2}</td>
-								</tr>
-								<tr>
-									<td><strong>Source</strong></td>
-									<td><a href="/account/{3}">{3}</a></td>
-								</tr>
-								<tr>
-									<td><strong>Destination</strong></td>
-									<td><a href="/account/{4}">{4}</a></td>
-								</tr>
-								<tr>
-									<td><strong>Type</strong></td>
-									<td>{5}</td>
-								</tr>
-								<tr>
-									<td><strong>Amount Transferred</strong></td>
-									<td>{6} Libra</td>
-								</tr>
-								<tr>
-									<td><strong>Gas Used</strong></td>
-									<td>{12} Libra</td>
-								</tr>
-								<tr>
-									<td><strong>Gas Price</strong></td>
-									<td>{7}</td>
-								</tr>
-								<tr>
-									<td><strong>Max Gas</strong></td>
-									<td>{8}</td>
-								</tr>
-								<tr>
-									<td><strong>Sequence Number</strong></td>
-									<td>{9}</td>
-								</tr>
-								<tr>
-									<td><strong>Public Key</strong></td>
-									<td>0x{10}</td>
-								</tr>
-								<tr>
-									<td><strong>Sender Signature</strong></td>
-									<td>{19}</td>
-								</tr>
-								<tr>
-									<td><strong>Signed Transaction Hash</strong></td>
-									<td>{14}</td>
-								</tr>
-								<tr>
-									<td><strong>State Root Hash</strong></td>
-									<td>{15}</td>
-								</tr>
-								<tr>
-									<td><strong>Event Root Hash</strong></td>
-									<td>{16}</td>
-								</tr>
-								<tr>
-									<td><strong>Program Hex</strong></td>
-									<td><pre>{22}</pre></td>
-								</tr>
-								{20}
-							</tbody>
-						</table>
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						{1}
+						<div class="text-center">
+							<p>Please input target account and amount to receive</p><br>
+						</div>
 					</div>
 				</div>
 			</div>
-			<div class="row m-bottom-70">
-				<div class="offset-lg-3 col-lg-6">
-					<div class="center-text">
-						<p><a href="?raw={21}">Toggle Raw View</a></p>
-					</div>
+			<div class="d-flex justify-content-center align-items-center container">
+				<div class="row">
+								<form action="/faucet" method="post" class="form-horizontal">
+									<div class="form-group">
+										<label for="acct" class="control-label">Account</label>
+										<input type="text" class="form-control-static" placeholder="Account" name="acct" id="acct">
+									</div>
+									<div class="form-group">
+										<label for="amount" class="control-label">Amount</label>
+										<input type="text" class="form-control-static" placeholder="Amount" name="amount" id="amount">
+									</div>
+									<button class="btn btn-primary btn-block" type="submit">Send Funds</button>
+								</form>
 				</div>
 			</div>
 
@@ -212,7 +157,8 @@
 			<div class="container">
 				<div class="row">
 					<div class="col-lg-12">
-						<p class="copyright">2019 © <a href="http://firstdag.com" style="color: white;">First - Digital Assets Group</a></p>
+						<p class="copyright"><a href="https://github.com/Disk1n/LibraBrowser" style="color: white;">Project Source Code - GitHub</a></p>
+						<p class="copyright">2019 © <a href="http://twitter.com/gal_diskin" style="color: white;">Gal Diskin</a> and contributors listed on GitHub. Hosting: <a href="http://firstdag.com" style="color: white;">First - Digital Assets Group</a></p>
 					</div>
 				</div>
 			</div>

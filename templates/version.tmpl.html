@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<!-- Global site tag (gtag.js) - Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-326971-2"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){{dataLayer.push(arguments);}}
+	  gtag('js', new Date());
+
+	  gtag('config', 'UA-326971-2');
+	</script>
+	<!-- end analytics -->
+
+	<!-- open graph / link previews -->
+	<meta property="og:title" content="Libra Testnet Explorer - Version Details" />
+	<meta property="og:type" content="text/html" />
+	<meta property="og:image" content="/assets/images/logos/transparent-logo.png" />
+	<meta property="og:image:width" content="445" />
+	<meta property="og:image:height" content="120" />
+
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Experimental Libra Testnet Explorer - Transaction Details</title>
+	<meta name="description" content="Experimental Libra TestNet Explorer by @gal_diskin" />
+	<meta name="keywords" content="Libra, libracoin, libra coin, facebook coin, calibra" />
+	<meta name="author" content="Gal Diskin, Daniel Prinz, First Group"/>
+
+	<!-- Favicon -->
+	<link rel="icon" type="image/png" href="/assets/images/favicon.png" />
+
+	<!-- Bootstrap & Plugins CSS -->
+	<link href="/assets/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+	<link href="/assets/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+	<!-- Custom CSS -->
+	<link href="/assets/css/purple.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+
+	<div class="loading-wrapper">
+		<div class="loading">
+			<div></div>
+			<div></div>
+			<div></div>
+		</div>
+	</div>	
+
+	<!-- ***** Header Area Start ***** -->
+	<header class="header-area">
+		<div class="container">
+			<div class="row">
+				<div class="col-12">
+					<nav class="main-nav">
+						<!-- ***** Logo Start ***** -->
+						<a href="/" class="logo">
+							<img src="/assets/images/logos/transparent-logo.png" style="max-height: 40px;" class="light-logo" alt="Libra Testnet Block Explorer"/>
+							<img src="/assets/images/logos/white-logo.png" style="max-height: 40px;" class="dark-logo" alt="Libra Testnet Block Explorer"/>
+						</a>
+						<!-- ***** Logo End ***** -->
+
+						<!-- ***** Menu Start ***** -->
+						<ul class="nav">
+							<li><a href="/">HOME</a></li>
+							<li><a href="/faucet">FAUCET</a></li>
+							<li><a href="/stats">STATISTICS</a></li>
+							<li><a href="/version/{0}">LATEST BLOCK</a></li>
+						</ul>
+						<a class='menu-trigger'>
+							<span>Menu</span>
+						</a>
+						<!-- ***** Menu End ***** -->						
+					</nav>
+				</div>
+			</div>
+		</div>
+	</header>
+	<!-- ***** Header Area End ***** -->
+
+	<!-- ***** Welcome Area Start ***** -->
+	<section class="block-explorer-wrapper bg-bottom-center" id="welcome-1">
+		<div class="block-explorer text">
+			<div class="container text-center">
+				<div class="row">
+					<div class="col-lg-12 align-self-center">
+						<h1>Libra Testnet Explorer</h1>
+					</div>
+					<div class="offset-lg-3 col-lg-6">
+						<p>Testnet Version / Up To Block {0}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="search">
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						<div class="input-wrapper">
+							<div class="input">
+								<form action="/search">
+									<input type="text" placeholder="Account details / Transaction version" name="acct">
+									<button><i class="fa fa-search"></i></button>
+								</form>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>	
+	</section>
+	<!-- ***** Welcome Area End ***** -->
+	<section class="block-explorer-section section bg-bottom">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12">
+					<div class="center-heading">
+						<h2 class="section-title">Details for Version / Transaction</h2>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-lg-12 col-md-12 col-sm-12">
+					<div class="table-responsive">
+						<table class="table table-striped table-latests table-detail">
+							<tbody>
+								<tr>
+									<td><strong>Version</strong></td>
+									<td>{1}</td>
+								</tr>
+								<tr>
+									<td><strong>Expiration Time</strong></td>
+									<td>{2}</td>
+								</tr>
+								<tr>
+									<td><strong>Source</strong></td>
+									<td><a href="/account/{3}">{3}</a></td>
+								</tr>
+								<tr>
+									<td><strong>Destination</strong></td>
+									<td><a href="/account/{4}">{4}</a></td>
+								</tr>
+								<tr>
+									<td><strong>Type</strong></td>
+									<td>{5}</td>
+								</tr>
+								<tr>
+									<td><strong>Amount Transferred</strong></td>
+									<td>{6} Libra</td>
+								</tr>
+								<tr>
+									<td><strong>Gas Used</strong></td>
+									<td>{12} Libra</td>
+								</tr>
+								<tr>
+									<td><strong>Gas Price</strong></td>
+									<td>{7}</td>
+								</tr>
+								<tr>
+									<td><strong>Max Gas</strong></td>
+									<td>{8}</td>
+								</tr>
+								<tr>
+									<td><strong>Sequence Number</strong></td>
+									<td>{9}</td>
+								</tr>
+								<tr>
+									<td><strong>Public Key</strong></td>
+									<td>0x{10}</td>
+								</tr>
+								<tr>
+									<td><strong>Sender Signature</strong></td>
+									<td>{19}</td>
+								</tr>
+								<tr>
+									<td><strong>Signed Transaction Hash</strong></td>
+									<td>{14}</td>
+								</tr>
+								<tr>
+									<td><strong>State Root Hash</strong></td>
+									<td>{15}</td>
+								</tr>
+								<tr>
+									<td><strong>Event Root Hash</strong></td>
+									<td>{16}</td>
+								</tr>
+								<tr>
+									<td><strong>Program Hex</strong></td>
+									<td><pre>{22}</pre></td>
+								</tr>
+								{20}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			<div class="row m-bottom-70">
+				<div class="offset-lg-3 col-lg-6">
+					<div class="center-text">
+						<p><a href="?raw={21}">Toggle Raw View</a></p>
+					</div>
+				</div>
+			</div>
+
+		</div>
+	</section>
+
+
+	<!-- ***** Contact & Footer Start ***** -->
+	<footer id="contact">
+		<div class="footer-bottom slim">
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-12">
+						<p class="copyright"><a href="https://github.com/Disk1n/LibraBrowser" style="color: white;">Project Source Code - GitHub</a></p>
+						<p class="copyright">2019 © <a href="http://twitter.com/gal_diskin" style="color: white;">Gal Diskin</a> and contributors listed on GitHub. Hosting: <a href="http://firstdag.com" style="color: white;">First - Digital Assets Group</a></p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</footer>
+	<!-- ***** Contact & Footer End ***** -->
+
+
+	<!-- jQuery -->
+	<script src="/assets/js/jquery-2.1.0.min.js"></script>
+
+	<!-- Bootstrap -->
+	<script src="/assets/js/popper.js"></script>
+	<script src="/assets/js/bootstrap.min.js"></script>
+
+	<!-- Plugins -->
+	<script src="/assets/js/particles.min.js"></script>
+	<script src="/assets/js/scrollreveal.min.js"></script>
+	<script src="/assets/js/jquery.downCount.js"></script>
+	<script src="/assets/js/parallax.min.js"></script>
+
+	<!-- Global Init -->
+	<script src="/assets/js/particle-purple.js"></script>
+	<script src="/assets/js/custom.js"></script>
+</body>
+</html>

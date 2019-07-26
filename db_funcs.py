@@ -169,10 +169,8 @@ class TxDBWorker(Thread):
                     except:
                         sleep(1)
                         continue
-                    if cur_ver > bver:
-                        if cur_ver > bver + 50: # for safety due to typical blockchain behavior
-                            sleep(1)
-                            continue
+                    if cur_ver > bver + 50:
+                        # +50 for safety due to chance we're not in sync with latest blockchain ver
                         file_path = '{}_{}.gz'.format(self.db_backup_path, strftime('%Y%m%d%H%M%S'))
                         logger.info('saving database to {}'.format(file_path))
                         with gzip.open(file_path, 'wb') as f:
@@ -180,6 +178,9 @@ class TxDBWorker(Thread):
                         metadata.drop_all(engine)
                         metadata.create_all(engine)
                         break
+                    elif cur_ver > bver:
+                        sleep(1)
+                        continue
 
                     # batch update
                     num = min(1000, bver - cur_ver)  # at most 5000 records at once
