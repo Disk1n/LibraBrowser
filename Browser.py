@@ -207,6 +207,7 @@ def stats():
         app.logger.exception('error in stats')
     return ret
 
+
 @app.route('/faucet', methods=['GET', 'POST'])
 def faucet():
     update_counters()
