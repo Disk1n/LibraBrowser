@@ -17,11 +17,11 @@ with open('logging.json', 'r') as f:
 import re
 import sys
 import os
+import requests
 
 from time import sleep
 
 from rpc_client import get_acct_raw, get_acct_info, start_rpc_client_instance
-from client import start_client_instance, do_cmd
 from db_funcs import get_latest_version, get_tx_from_db_by_version, get_all_account_tx, TxDBWorker
 from stats import calc_stats
 
@@ -228,17 +228,22 @@ def faucet():
         try:
             acct = request.form.get('acct')
             app.logger.info('acct: {}'.format(acct))
-            amount = request.form.get('amount')
+            amount = float(request.form.get('amount'))
             app.logger.info('amount: {}'.format(amount))
-            if float(amount) < 0:
+            if amount < 0:
                 message = 'Amount must be >= 0'
             elif not is_valid_account(acct):
                 message = 'Invalid account format'
             else:
-                do_cmd('a mb 0 ' + str(float(amount)), p = p)
-                do_cmd('tb 0 ' + acct + ' ' + str(float(amount)), p = p)
-                acct_link = '<a href="/account/{0}">{0}</a>'.format(acct)
-                message = 'Sent ' + amount + ' <small>Libra</small> to ' + acct_link
+                response = requests.get(
+                    config['FAUCET_HOST'],
+                    params={
+                        'address': acct,
+                        'amount': format(amount * 1e6, '.0f')
+                    }
+                )
+                if response.status_code == 200:
+                    message = 'Sent {0} <small>Libra</small> to <a href="/account/{1}">{1}</a>'.format(amount, acct)
         except:
             message = 'Invalid request logged!'
             app.logger.exception(message)
@@ -272,8 +277,6 @@ if __name__ == '__main__':
     TxDBWorker(config).start()
 
     start_rpc_client_instance(config['RPC_SERVER'], config['MINT_ACCOUNT'])
-
-    p = start_client_instance(config['CLIENT_PATH'], config['ACCOUNT_FILE'])
 
     sleep(1)
 
