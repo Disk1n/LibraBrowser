@@ -14,10 +14,10 @@ from db_funcs import get_tx_from_db_by_version, get_latest_version, get_first_ve
 from sqlalchemy import select, desc, func
 import struct
 
+
 #########
 # Funcs #
 #########
-
 def days_hours_minutes_seconds(td):
     return td.days, td.seconds//3600, (td.seconds//60) % 60, (td.seconds % 60)
 
@@ -55,7 +55,8 @@ def calc_stats(limit = None):
     logger.info('p2p {} {}'.format(p2p_count, p2p_sum))
     other_count, other_sum = get_tx_cnt_sum((txs.c.type != 'mint_transaction') & (txs.c.type != 'peer_to_peer_transaction'), s_limit)
     # add 1 to account for the genesis block until it is added to DB
-    other_count += 1
+    if first_version == 1:
+        other_count += 1
     logger.info('others {} {}'.format(other_count, other_sum))
 
     # unique accounts

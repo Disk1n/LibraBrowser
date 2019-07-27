@@ -12,10 +12,8 @@ A Block Explorer for the Libra Blockchain TestNet. See: https://librabrowser.io
 * Simple Libra client automation (soon to be deprecated)
 
 ## Installation
-1. Install Libra per official instructions
-2. Run: pip3 install grpcio grpcio-tools hexdump Flask Flask-Caching sqlalchemy psycopg2
-3. Open the official client, create an account and save the account to disk (should be set in ACCOUNT_FILE setting)
-4. Edit config.json and make sure that settings match your environment (in particular CLIENT_PATH)
+1. Run: pip3 install grpcio grpcio-tools hexdump Flask Flask-Caching sqlalchemy psycopg2 requests
+2. Have access to a Postgres Database server
 
 ## Database
 * Default config assumes a [postgresql](https://wiki.postgresql.org/wiki/Main_Page) database with:
