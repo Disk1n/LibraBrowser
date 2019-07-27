@@ -6,6 +6,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
+
 ###########
 # Imports #
 ###########
@@ -21,10 +22,10 @@ import gzip
 
 from rpc_client import get_latest_version_from_ledger, get_raw_tx_lst, parse_raw_tx_lst, start_rpc_client_instance
 
+
 #############
 # Constants #
 #############
-
 columns = (
     Column('version', Integer, primary_key=True),
     Column('expiration_date', String),
@@ -48,17 +49,18 @@ columns = (
 metadata = MetaData()
 txs = Table('transactions', metadata, *columns)
 
+
 ###########
 # Globals #
 ###########
-
 engine = None
+
 
 #########
 # Funcs #
 #########
-
 unpack = lambda x: struct.unpack('<Q', x)[0] / 1000000
+
 
 def get_latest_version():
     global engine
@@ -68,8 +70,10 @@ def get_latest_version():
         cur_ver = 0
     return cur_ver
 
+
 def parse_db_row(row):
     return [unpack(r) if i in (5,6,7,11) else r for i, r in enumerate(row)]
+
 
 def get_tx_from_db_by_version(ver):
     global engine
@@ -84,6 +88,7 @@ def get_tx_from_db_by_version(ver):
         logger.warning('possible duplicates detected in db, record version: {}'.format(ver))
     return res
 
+
 def get_all_account_tx(acct, page):
     global engine
     return map(
@@ -94,6 +99,7 @@ def get_all_account_tx(acct, page):
             ).order_by(desc(txs.c.version)).limit(100).offset(page*100)
         )
     )
+
 
 def get_first_version(s_limit):
     global engine
@@ -107,6 +113,7 @@ def get_first_version(s_limit):
         )
     ).scalar()
 
+
 def get_tx_cnt_sum(whereclause, s_limit):
     global engine
     selected = engine.execute(
@@ -119,6 +126,7 @@ def get_tx_cnt_sum(whereclause, s_limit):
         )
     ).fetchall()
     return len(selected), sum(map(lambda r: unpack(r['amount']), selected))
+
 
 def get_acct_cnt(acct, s_limit):
     global engine

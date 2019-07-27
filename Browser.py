@@ -165,12 +165,16 @@ def acct_details(acct):
     if not is_valid_account(acct):
         return gen_error_page(bver), 404
 
-
-    acct_state_raw = get_acct_raw(acct)
-    acct_info = get_acct_info(acct_state_raw)
-    app.logger.info('acct_info: {}'.format(acct_info))
-
     try:
+        acct_state_raw = get_acct_raw(acct)
+        try:
+            acct_info = get_acct_info(acct_state_raw)
+        except:
+            # FIXME: temp patch to missing blob issue
+            acct_info = (acct, '(unknown - missing blob error)', '(unknown - missing blob error)',
+                         '(unknown - missing blob error)', '(unknown - missing blob error)')
+        app.logger.info('acct_info: {}'.format(acct_info))
+
         tx_list = get_all_account_tx(acct, page)
         tx_tbl = ''
         for tx in tx_list:

@@ -90,7 +90,7 @@ def get_acct_info(state):
         sent_events = acct_state[3]
         sq_num = acct_state[4]
     except:
-        logger.exception()
+        logger.exception('exception in get_acct_info')
 
     return account, balance, sq_num, sent_events, recv_events
 
