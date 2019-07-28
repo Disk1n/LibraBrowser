@@ -18,13 +18,15 @@ import re
 import sys
 import os
 import requests
+import struct
 
 from time import sleep
 
 from rpc_client import get_acct_raw, get_acct_info, start_rpc_client_instance
-from db_funcs import get_latest_version, get_tx_from_db_by_version, get_all_account_tx, TxDBWorker
+from db_funcs import get_latest_version, TxDBWorker
 from stats import calc_stats
-
+from models import Transaction, session_scope
+from sqlalchemy import desc, func
 
 ##############
 # Flask init #
@@ -66,6 +68,8 @@ faucet_alert_template = '<div class="text-center"><div class="alert alert-danger
 ################
 # Helper funcs #
 ################
+unpack = lambda x: struct.unpack('<Q', x)[0] / 1000000
+
 def update_counters():
     global ctr
     ctr += 1
@@ -82,13 +86,13 @@ def is_valid_account(acct):
 
 def gen_tx_table_row(tx):
     res  = '<tr><td>'
-    res += '<a href="/version/' + str(tx[0]) + '">' + str(tx[0]) + '</a></td><td>'  # Version
-    res += str(tx[1]) + '</td><td>'                                                 # expiration date
-    res += ('&#x1f91d;' if tx[4] == 'peer_to_peer_transaction' else '&#x1f6e0;') + '</td><td>'   # type
+    res += '<a href="/version/' + str(tx.version) + '">' + str(tx.version) + '</a></td><td>'  # Version
+    res += str(tx.expiration_date) + '</td><td>'                                                 # expiration date
+    res += ('&#x1f91d;' if tx.type == 'peer_to_peer_transaction' else '&#x1f6e0;') + '</td><td>'   # type
     res += '<p class="text-monospace">'
-    res += '<a href="/account/' + str(tx[2]) + '">' + str(tx[2]) + '</a> &rarr; '          # source
-    res += '<a href="/account/' + str(tx[3]) + '">' + str(tx[3]) + '</a></p></td><td>'  # dest
-    res += '<strong>' + str(tx[5]) + ' Libra</strong></td>'                         # amount
+    res += '<a href="/account/' + str(tx.src) + '">' + str(tx.src) + '</a> &rarr; '          # source
+    res += '<a href="/account/' + str(tx.dest) + '">' + str(tx.dest) + '</a></p></td><td>'  # dest
+    res += '<strong>' + str(unpack(tx.amount)) + ' Libra</strong></td>'                         # amount
     res += '</tr>'
 
     return res
@@ -120,7 +124,8 @@ def gen_error_page(ver = None):
 @app.route('/')
 def index():
     update_counters()
-    bver = str(get_latest_version())
+    with session_scope() as session:
+        bver = str(get_latest_version(session))
     return index_template.format(bver)
 
 
@@ -128,60 +133,94 @@ def index():
 @cache.cached(timeout=3600)  # versions don't change so we can cache long-term
 def version(ver):
     update_counters()
+    with session_scope() as session:
 
-    bver = str(get_latest_version())
+        bver = str(get_latest_version(session))
 
-    try:
-        ver = int(ver)
-        tx = get_tx_from_db_by_version(ver)
-    except:
-        return gen_error_page(bver), 404
+        try:
+            ver = int(ver)   # safety
+        except:
+            logger.warning('potential attempt to inject: {}'.format(ver))
+            ver = 1
+        res = session.query(Transaction).filter_by(version=ver).all()
+        if 1 < len(res):
+            logger.warning('possible duplicates detected in db, record version: {}'.format(ver))
+        try:
+            tx = res.pop()
+        except:
+            return gen_error_page(bver), 404
 
-    # for toggle raw view
-    if request.args.get('raw') == '1':
-        extra = """<tr>
-                    <td><strong>Program Raw</strong></td>
-                    <td><pre>{0}</pre></td>
-                   </tr>""".format(tx[-1])
-        not_raw = '0'
-    else:
-        extra = ''
-        not_raw = '1'
+        # for toggle raw view
+        if request.args.get('raw') == '1':
+            extra = """<tr>
+                        <td><strong>Program Raw</strong></td>
+                        <td><pre>{0}</pre></td>
+                        </tr>""".format(tx.code_hex)
+            not_raw = '0'
+        else:
+            extra = ''
+            not_raw = '1'
 
-    return version_template.format(bver, *tx, add_br_every64(tx[12]), extra, not_raw, tx[-2].replace('<', '&lt;'))
+        return version_template.format(
+            bver,
+            tx.version,
+            tx.expiration_date,
+            tx.src,
+            tx.dest,
+            tx.type,
+            unpack(tx.amount),
+            unpack(tx.gas_price),
+            unpack(tx.max_gas),
+            tx.sq_num,
+            tx.pub_key,
+            tx.expiration_unixtime,
+            unpack(tx.gas_used),
+            tx.sender_sig,
+            tx.signed_tx_hash,
+            tx.state_root_hash,
+            tx.event_root_hash,
+            tx.code_hex,
+            tx.program,
+            add_br_every64(tx.sender_sig),
+            extra,
+            not_raw,
+            tx.code_hex.replace('<', '&lt;')
+        )
 
 
 @app.route('/account/<acct>')
 def acct_details(acct):
-    app.logger.info('Account: {}'.format(acct))
     update_counters()
-    bver = str(get_latest_version())
+    app.logger.info('Account: {}'.format(acct))
+    with session_scope() as session:
+        bver = str(get_latest_version(session))
 
-    try:
-        page = int(request.args.get('page'))
-    except:
-        page = 0
-
-    if not is_valid_account(acct):
-        return gen_error_page(bver), 404
-
-    try:
-        acct_state_raw = get_acct_raw(acct)
         try:
-            acct_info = get_acct_info(acct_state_raw)
+            page = int(request.args.get('page'))
         except:
-            # FIXME: temp patch to missing blob issue
-            acct_info = (acct, '(unknown - missing blob error)', '(unknown - missing blob error)',
-                         '(unknown - missing blob error)', '(unknown - missing blob error)')
-        app.logger.info('acct_info: {}'.format(acct_info))
+            page = 0
 
-        tx_list = get_all_account_tx(acct, page)
-        tx_tbl = ''
-        for tx in tx_list:
-            tx_tbl += gen_tx_table_row(tx)
-    except:
-        app.logger.exception('error in building table')
-        return gen_error_page(bver), 404
+        if not is_valid_account(acct):
+            return gen_error_page(bver), 404
+
+        try:
+            acct_state_raw = get_acct_raw(acct)
+            try:
+                acct_info = get_acct_info(acct_state_raw)
+            except:
+                # FIXME: temp patch to missing blob issue
+                acct_info = (acct, '(unknown - missing blob error)', '(unknown - missing blob error)',
+                         '(unknown - missing blob error)', '(unknown - missing blob error)')
+            app.logger.info('acct_info: {}'.format(acct_info))
+
+            tx_tbl = ''.join(gen_tx_table_row(tx) for tx in 
+                session.query(Transaction).filter(
+                    (Transaction.src == acct) | (Transaction.dest == acct)
+                ).order_by(desc(Transaction.version)).limit(100).offset(page*100)
+            )
+        except:
+            app.logger.exception('error in building table')
+            return gen_error_page(bver), 404
 
     next_page = "/account/" + acct + "?page=" + str(page + 1)
 
@@ -190,6 +229,7 @@ def acct_details(acct):
 
 @app.route('/search')
 def search_redir():
+    update_counters()
     tgt = request.args.get('acct')
     if len(tgt) == 64:
         app.logger.info('redir to account: {}'.format(tgt))
@@ -205,9 +245,10 @@ def stats():
     update_counters()
     try:
         # get stats
-        stats_all_time = calc_stats()
-        stats_24_hours = calc_stats(limit = 3600 * 24)[5:]
-        stats_one_hour = calc_stats(limit = 3600)[5:]
+        with session_scope() as session:
+            stats_all_time = calc_stats(session)
+            stats_24_hours = calc_stats(session, limit = 3600 * 24)[5:]
+            stats_one_hour = calc_stats(session, limit = 3600)[5:]
 
         ret = stats_template.format(*stats_all_time, *stats_24_hours, *stats_one_hour)
     except:
@@ -224,8 +265,9 @@ def stats():
 @app.route('/faucet', methods=['GET', 'POST'])
 def faucet():
     update_counters()
+    with session_scope() as session:
 
-    bver = str(get_latest_version())
+        bver = str(get_latest_version(session))
 
     message = ''
     if request.method == 'POST':
@@ -278,11 +320,18 @@ if __name__ == '__main__':
 
     app.logger.info("system configuration: {}".format(json.dumps(config, indent=4)))
 
-    TxDBWorker(config).start()
+    running = False
+    while not running:
+        try:
+            start_rpc_client_instance(config['RPC_SERVER'], config['MINT_ACCOUNT'])
+            running = True
+        except:
+            sleep(1)
 
-    start_rpc_client_instance(config['RPC_SERVER'], config['MINT_ACCOUNT'])
-
-    sleep(1)
+    txdb = TxDBWorker(config)
+    txdb.start()
+    while not txdb.running:
+        sleep(1)
 
     app.run(port=config['FLASK_PORT'], threaded=config['FLASK_THREADED'],
             host=config['FLASK_HOST'], debug=config['FLASK_DEBUG'])
