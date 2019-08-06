@@ -2,97 +2,94 @@
 # -*- coding: utf-8 -*-
 # execute in production with: nohup python3 Browser.py &> browser.log < /dev/null &
 
-################
-# Logging init #
-################
-import json
-from logging.config import dictConfig
-
-with open('logging.json', 'r') as f:
-    dictConfig( json.load(f) )
-
 ###########
 # Imports #
 ###########
 import re
 import sys
 import os
-import requests
-import struct
+import traceback
+import json
 
 from time import sleep
+from datetime import datetime, timedelta
+from multiprocessing import Process
 
 from rpc_client import get_acct_raw, get_acct_info, start_rpc_client_instance
-from db_funcs import get_latest_version, TxDBWorker
+from client import start_client_instance, do_cmd
+from db_funcs import connect_to_db, get_latest_version, get_tx_from_db_by_version, get_all_account_tx, tx_db_worker
 from stats import calc_stats
-from models import Transaction, session_scope
-from sqlalchemy import desc, func
+
 
 ##############
 # Flask init #
 ##############
 from flask import Flask, request, redirect, send_from_directory
-from flask_caching import Cache
-
-cache = Cache(config={'CACHE_TYPE': 'simple', 'CACHE_DEFAULT_TIMEOUT': 60})  # TODO: simple cache is not thread safe
 app = Flask(__name__, static_url_path='')
-cache.init_app(app)
 
 
 ###############
 # Definitions #
 ###############
 ctr = 0   # counter of requests since last init
+c2 = None  # placeholder for connection object
+last_gen = datetime.now() - timedelta(0, 600)  # last time stats were generates
+stats_cache = ''  # cached results of stats
 
-with open('templates/index.tmpl.html', 'r', encoding='utf-8') as f:
-    index_template = f.read()
+header = '''<html><head><title>Libra Testnet Experimental Browser</title></head>
+              <body><h3>Experimental Libra testnet explorer by <a href="https://twitter.com/gal_diskin">@gal_diskin</a> 
+              special thanks to Daniel Prinz for his help</h3>
+              <h3>Courtesy of <a href="https://www.firstdag.com">First Group</a></h3>
+              I developed this to make testing easier. I have no patiance ATM to make it pretty / faster / more stable. 
+              I might continue to develop this if I see it has value to others...
+              If you liked this feel free to  let me know and send me some tokens on the testnet at: 
+              <a href='/account/e945eec0f64069d4f171d394aa27881fabcbd3bb6bcc893162e60ad3d6c9feec'>
+              e945eec0f64069d4f171d394aa27881fabcbd3bb6bcc893162e60ad3d6c9feec</a>
+'''
 
-with open('templates/version.tmpl.html', 'r', encoding='utf-8') as f:
-    version_template = f.read()
+index_template = open('index.html.tmpl', 'r', encoding='utf-8').read()
 
-with open('templates/forbidden.tmpl.html', 'r', encoding='utf-8') as f:
-    forbidden_template = f.read()
+version_template = open('version.html.tmpl', 'r', encoding='utf-8').read()
 
-with open('templates/stats.tmpl.html', 'r', encoding='utf-8') as f:
-    stats_template = f.read()
+version_error_template = header + "<h1>Couldn't read version details!<h1></body></html>"
 
-with open('templates/account.tmpl.html', 'r', encoding='utf-8') as f:
-    account_template = f.read()
+stats_template = open('stats.html.tmpl', 'r', encoding='utf-8').read()
 
-with open('templates/faucet.tmpl.html', 'r', encoding='utf-8') as f:
-    faucet_template = f.read()
+account_template = open('account.html.tmpl', 'r', encoding='utf-8').read()
+
+faucet_template = open('faucet.html.tmpl', 'r', encoding='utf-8').read()
 
 faucet_alert_template = '<div class="text-center"><div class="alert alert-danger" role="alert"><p>{0}</p></div></div>'
+
+invalid_account_template = header + '<h1>Invalid Account format!<h1></body></html>'
 
 
 ################
 # Helper funcs #
 ################
-unpack = lambda x: struct.unpack('<Q', x)[0] / 1000000
-
 def update_counters():
     global ctr
     ctr += 1
-    app.logger.info('counter: {}'.format(ctr))
+    print('counter:', ctr)
     sys.stdout.flush()
 
 
 def is_valid_account(acct):
     if (not re.match("^[A-Za-z0-9]*$", acct)) or (len(acct) != 64):
-        app.logger.info("invalid Account: {}".format(acct))
+        print("invalid Account:", acct)
         return False
     return True
 
 
 def gen_tx_table_row(tx):
     res  = '<tr><td>'
-    res += '<a href="/version/' + str(tx.version) + '">' + str(tx.version) + '</a></td><td>'  # Version
-    res += str(tx.expiration_date) + '</td><td>'                                                 # expiration date
-    res += ('&#x1f91d;' if tx.type == 'peer_to_peer_transaction' else '&#x1f6e0;') + '</td><td>'   # type
+    res += '<a href="/version/' + str(tx[0]) + '">' + str(tx[0]) + '</a></td><td>'  # Version
+    res += str(tx[1]) + '</td><td>'                                                 # expiration date
+    res += ('&#x1f91d;' if tx[4] == 'peer_to_peer_transaction' else '&#x1f6e0;') + '</td><td>'   # type
     res += '<p class="text-monospace">'
-    res += '<a href="/account/' + str(tx.src) + '">' + str(tx.src) + '</a> &rarr; '          # source
-    res += '<a href="/account/' + str(tx.dest) + '">' + str(tx.dest) + '</a></p></td><td>'  # dest
-    res += '<strong>' + str(unpack(tx.amount)) + ' Libra</strong></td>'                         # amount
+    res += '<a href="/account/' + str(tx[2]) + '">' + str(tx[2]) + '</a> &rarr; '          # source
+    res += '<a href="/account/' + str(tx[3]) + '">' + str(tx[3]) + '</a></p></td><td>'  # dest
+    res += '<strong>' + str(tx[5]) + ' Libra</strong></td>'                         # amount
     res += '</tr>'
 
     return res
@@ -110,154 +107,119 @@ def add_br_every64(s):
     return res
 
 
-def gen_error_page(ver = None):
-    try:
-        error = forbidden_template.format(ver)
-    except:
-        error = forbidden_template.format('???')
-    return error
-
-
 ##########
 # Routes #
 ##########
 @app.route('/')
 def index():
     update_counters()
-    with session_scope() as session:
-        bver = str(get_latest_version(session))
+    c2, conn = connect_to_db(config['DB_PATH'])
+
+    bver = str(get_latest_version(c2))
+
+    conn.close()
     return index_template.format(bver)
 
 
 @app.route('/version/<ver>')
-@cache.cached(timeout=3600)  # versions don't change so we can cache long-term
 def version(ver):
     update_counters()
-    with session_scope() as session:
+    c2, conn = connect_to_db(config['DB_PATH'])
 
-        bver = str(get_latest_version(session))
+    bver = str(get_latest_version(c2))
 
-        try:
-            ver = int(ver)   # safety
-        except:
-            logger.warning('potential attempt to inject: {}'.format(ver))
-            ver = 1
-        res = session.query(Transaction).filter_by(version=ver).all()
-        if 1 < len(res):
-            logger.warning('possible duplicates detected in db, record version: {}'.format(ver))
-        try:
-            tx = res.pop()
-        except:
-            return gen_error_page(bver), 404
+    try:
+        ver = int(ver)
+        tx = get_tx_from_db_by_version(ver, c2)
+    except:
+        conn.close()
+        return version_error_template
 
-        # for toggle raw view
-        if request.args.get('raw') == '1':
-            extra = """<tr>
-                        <td><strong>Program Raw</strong></td>
-                        <td><pre>{0}</pre></td>
-                        </tr>""".format(tx.code_hex)
-            not_raw = '0'
-        else:
-            extra = ''
-            not_raw = '1'
+    # for toggle raw view
+    if request.args.get('raw') == '1':
+        extra = """<tr>
+                    <td><strong>Program Raw</strong></td>
+                    <td><pre>{0}</pre></td>
+                   </tr>""".format(tx[-1])
+        not_raw = '0'
+    else:
+        extra = ''
+        not_raw = '1'
 
-        return version_template.format(
-            bver,
-            tx.version,
-            tx.expiration_date,
-            tx.src,
-            tx.dest,
-            tx.type,
-            unpack(tx.amount),
-            unpack(tx.gas_price),
-            unpack(tx.max_gas),
-            tx.sq_num,
-            tx.pub_key,
-            tx.expiration_unixtime,
-            unpack(tx.gas_used),
-            tx.sender_sig,
-            tx.signed_tx_hash,
-            tx.state_root_hash,
-            tx.event_root_hash,
-            tx.code_hex,
-            tx.program,
-            add_br_every64(tx.sender_sig),
-            extra,
-            not_raw,
-            tx.code_hex.replace('<', '&lt;')
-        )
+    conn.close()
+    return version_template.format(bver, *tx, add_br_every64(tx[12]), extra, not_raw, tx[-2].replace('<', '&lt;'))
 
 
 @app.route('/account/<acct>')
 def acct_details(acct):
+    print(acct)
     update_counters()
-    app.logger.info('Account: {}'.format(acct))
-    with session_scope() as session:
-        bver = str(get_latest_version(session))
+    try:
+        page = int(request.args.get('page'))
+    except:
+        page = 0
 
-        try:
-            page = int(request.args.get('page'))
-        except:
-            page = 0
+    if not is_valid_account(acct):
+        return invalid_account_template
 
-        if not is_valid_account(acct):
-            return gen_error_page(bver), 404
+    c2, conn = connect_to_db(config['DB_PATH'])
+    bver = str(get_latest_version(c2))
 
-        try:
-            acct_state_raw = get_acct_raw(acct)
-            try:
-                acct_info = get_acct_info(acct_state_raw)
-            except:
-                # FIXME: temp patch to missing blob issue
-                acct_info = (acct, '(unknown - missing blob error)', '(unknown - missing blob error)',
-                         '(unknown - missing blob error)', '(unknown - missing blob error)')
-            app.logger.info('acct_info: {}'.format(acct_info))
+    acct_state_raw = get_acct_raw(acct)
+    acct_info = get_acct_info(acct_state_raw)
+    print('acct_info', acct_info)
 
-            tx_tbl = ''.join(gen_tx_table_row(tx) for tx in 
-                session.query(Transaction).filter(
-                    (Transaction.src == acct) | (Transaction.dest == acct)
-                ).order_by(desc(Transaction.version)).limit(100).offset(page*100)
-            )
-        except:
-            app.logger.exception('error in building table')
-            return gen_error_page(bver), 404
+    try:
+        tx_list = get_all_account_tx(c2, acct, page)
+        tx_tbl = ''
+        for tx in tx_list:
+            tx_tbl += gen_tx_table_row(tx)
+    except:
+        print(sys.exc_info())
+        traceback.print_exception(*sys.exc_info())
+        print('error in building table')
 
     next_page = "/account/" + acct + "?page=" + str(page + 1)
 
+    conn.close()
     return account_template.format(bver, *acct_info, tx_tbl, next_page)
 
 
 @app.route('/search')
 def search_redir():
-    update_counters()
     tgt = request.args.get('acct')
     if len(tgt) == 64:
-        app.logger.info('redir to account: {}'.format(tgt))
+        print('redir to account', tgt)
         return redirect('/account/'+tgt)
     else:
-        app.logger.info('redir to tx: {}'.format(tgt))
+        print('redir to tx', tgt)
         return redirect('/version/'+tgt)
 
 
 @app.route('/stats')
-@cache.cached(timeout=60)  # no point updating states more than once per minute
 def stats():
+    global last_gen, stats_cache
     update_counters()
+
+    if (datetime.now() - last_gen).total_seconds() < 60:
+        return stats_cache
+
+    c2, conn = connect_to_db(config['DB_PATH'])
     try:
         # get stats
-        with session_scope() as session:
-            stats_all_time = calc_stats(session)
-            stats_24_hours = calc_stats(session, limit = 3600 * 24)[5:]
-            stats_one_hour = calc_stats(session, limit = 3600)[5:]
+        stats_all_time = calc_stats(c2)
+        stats_24_hours = calc_stats(c2, limit = 3600 * 24)[5:]
+        stats_one_hour = calc_stats(c2, limit = 3600)[5:]
 
         ret = stats_template.format(*stats_all_time, *stats_24_hours, *stats_one_hour)
+        stats_cache = ret
+        last_gen = datetime.now()
     except:
-        app.logger.exception('error in stats')
-        try:
-            bver = stats_all_time[0]
-        except:
-            bver = None
-        return gen_error_page(bver), 404
+        print(sys.exc_info())
+        traceback.print_exception(*sys.exc_info())
+        print('error in stats')
+
+    conn.close()
 
     return ret
 
@@ -265,34 +227,29 @@ def stats():
 @app.route('/faucet', methods=['GET', 'POST'])
 def faucet():
     update_counters()
-    with session_scope() as session:
 
-        bver = str(get_latest_version(session))
+    c2, conn = connect_to_db(config['DB_PATH'])
+    bver = str(get_latest_version(c2))
 
     message = ''
     if request.method == 'POST':
         try:
             acct = request.form.get('acct')
-            app.logger.info('acct: {}'.format(acct))
-            amount = float(request.form.get('amount'))
-            app.logger.info('amount: {}'.format(amount))
-            if amount < 0:
+            print(acct)
+            amount = request.form.get('amount')
+            print(amount)
+            if float(amount) < 0:
                 message = 'Amount must be >= 0'
             elif not is_valid_account(acct):
                 message = 'Invalid account format'
             else:
-                response = requests.get(
-                    config['FAUCET_HOST'],
-                    params={
-                        'address': acct,
-                        'amount': format(amount * 1e6, '.0f')
-                    }
-                )
-                if response.status_code == 200:
-                    message = 'Sent {0} <small>Libra</small> to <a href="/account/{1}">{1}</a>'.format(amount, acct)
+                do_cmd('a mb 0 ' + str(float(amount)), p = p)
+                do_cmd('tb 0 ' + acct + ' ' + str(float(amount)), p = p)
+                acct_link = '<a href="/account/{0}">{0}</a>'.format(acct)
+                message = 'Sent ' + amount + ' <small>Libra</small> to ' + acct_link
         except:
+            traceback.print_exception(*sys.exc_info())
             message = 'Invalid request logged!'
-            app.logger.exception(message)
 
         if message:
             message = faucet_alert_template.format(message)
@@ -301,7 +258,6 @@ def faucet():
 
 
 @app.route('/assets/<path:path>')
-@cache.cached(timeout=3600)  # assets don't really change so can be cached for one hour
 def send_asset(path):
     return send_from_directory('assets', path)
 
@@ -318,20 +274,17 @@ if __name__ == '__main__':
     except:
         config = config["PRODUCTION"]
 
-    app.logger.info("system configuration: {}".format(json.dumps(config, indent=4)))
+    print("system configuration:")
+    print(json.dumps(config, indent=4))
 
-    running = False
-    while not running:
-        try:
-            start_rpc_client_instance(config['RPC_SERVER'], config['MINT_ACCOUNT'])
-            running = True
-        except:
-            sleep(1)
+    tx_p = Process(target=tx_db_worker, args=(config['DB_PATH'], config['RPC_SERVER'], config['MINT_ACCOUNT']))
+    tx_p.start()
 
-    txdb = TxDBWorker(config)
-    txdb.start()
-    while not txdb.running:
-        sleep(1)
+    start_rpc_client_instance(config['RPC_SERVER'], config['MINT_ACCOUNT'])
+
+    p = start_client_instance(config['CLIENT_PATH'], config['ACCOUNT_FILE'])
+
+    sleep(1)
 
     app.run(port=config['FLASK_PORT'], threaded=config['FLASK_THREADED'],
             host=config['FLASK_HOST'], debug=config['FLASK_DEBUG'])
