@@ -208,12 +208,11 @@ def acct_details(acct):
             try:
                 acct_info = get_acct_info(acct_state_raw)
             except:
-                # FIXME: temp patch to missing blob issue
-                acct_info = (acct, '(unknown - missing blob error)', '(unknown - missing blob error)',
-                         '(unknown - missing blob error)', '(unknown - missing blob error)')
+                # if account_state_with_proof.blob does not exist
+                acct_info = (acct, 0, '-', 0, 0, None)
             app.logger.info('acct_info: {}'.format(acct_info))
 
-            tx_tbl = ''.join(gen_tx_table_row(tx) for tx in 
+            tx_tbl = ''.join(gen_tx_table_row(tx) for tx in
                 session.query(Transaction).filter(
                     (Transaction.src == acct) | (Transaction.dest == acct)
                 ).order_by(desc(Transaction.version)).limit(100).offset(page*100)
