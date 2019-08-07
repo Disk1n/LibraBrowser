@@ -223,7 +223,7 @@ def acct_details(acct):
 
     next_page = "/account/" + acct + "?page=" + str(page + 1)
 
-    return account_template.format(bver, *acct_info, tx_tbl, next_page)
+    return account_template.format(bver, *(acct_info[:-1]), tx_tbl, next_page)
 
 
 @app.route('/search')
